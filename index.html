@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="theme-color" content="#0a0a1a"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Campus CP"/>
+  <meta name="description" content="Campus Complaint Portal — Report issues, track status, and get them resolved fast."/>
+  <title>Campus Complaint Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- ══════════════════════════════════════════════════
+       STEP 1: PASTE YOUR FIREBASE CONFIG BELOW
+       1. Go to console.firebase.google.com
+       2. Click "Add project" → name it "CampusComplaints"
+       3. Go to "Firestore Database" → Create database → Start in test mode
+       4. Go to Project Settings → Your apps → Web app (</>)
+       5. Copy your config and REPLACE the values below
+       ══════════════════════════════════════════════════ -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, orderBy, arrayUnion }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC6QxVaFyPOEZxY7NGmgoNHTPBASaCQIPM",
+    authDomain: "campus-complaint-portal-99be5.firebaseapp.com",
+    projectId: "campus-complaint-portal-99be5",
+    storageBucket: "campus-complaint-portal-99be5.firebasestorage.app",
+    messagingSenderId: "535053501569",
+    appId: "1:535053501569:web:49df908a36d7cbe1217980",
+    measurementId: "G-3GHP2654B5"
+    };
+
+    const fbApp = initializeApp(firebaseConfig);
+    const db    = getFirestore(fbApp);
+
+    window._db          = db;
+    window._col         = () => collection(db, "complaints");
+    window._addDoc      = addDoc;
+    window._getDocs     = getDocs;
+    window._doc         = doc;
+    window._updateDoc   = updateDoc;
+    window._onSnapshot  = onSnapshot;
+    window._query       = query;
+    window._orderBy     = orderBy;
+    window._arrayUnion  = arrayUnion;
+    window._fbReady     = true;
+
+    document.dispatchEvent(new Event("fb-ready"));
+  </script>
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+    body{
+      background:#060614;color:#e8e8ff;
+      font-family:'Space Grotesk',sans-serif;
+      min-height:100vh;font-weight:600;
+      position:relative;overflow-x:hidden;
+    }
+
+    body::before{
+      content:'';position:fixed;top:-20%;left:-10%;
+      width:60%;height:70%;
+      background:radial-gradient(ellipse at center,rgba(88,28,220,0.18) 0%,transparent 70%);
+      pointer-events:none;z-index:0;
+    }
+    body::after{
+      content:'';position:fixed;bottom:-20%;right:-10%;
+      width:60%;height:70%;
+      background:radial-gradient(ellipse at center,rgba(0,180,255,0.12) 0%,transparent 70%);
+      pointer-events:none;z-index:0;
+    }
+    #root{position:relative;z-index:1;}
+
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:linear-gradient(135deg,#5b21d6,#0ea5e9);border-radius:3px}
+    input,select,textarea,button{font-family:'Space Grotesk',sans-serif;outline:none;font-weight:600;color:#e8e8ff}
+    input::placeholder,textarea::placeholder{color:#8888aa;font-weight:500}
+    select option{background:#12122a;color:#e8e8ff;font-weight:600}
+
+    .page{max-width:720px;margin:0 auto;padding:20px 14px 100px}
+
+    /* Loading screen */
+    .loading-screen{
+      position:fixed;inset:0;background:#060614;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      gap:18px;z-index:999;
+    }
+    .spinner{
+      width:48px;height:48px;border:3px solid rgba(120,100,255,0.2);
+      border-top-color:#7c3aed;border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+    /* Live badge */
+    .live-badge{
+      display:inline-flex;align-items:center;gap:6px;
+      background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);
+      padding:5px 14px;border-radius:20px;font-size:11px;color:#10b981;font-weight:700;letter-spacing:1px;
+    }
+    .live-dot{width:7px;height:7px;background:#10b981;border-radius:50%;animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    .float-window{
+      background:rgba(10,10,35,0.75);
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border-radius:20px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.4),0 2px 8px rgba(88,28,220,0.15),inset 0 1px 0 rgba(255,255,255,0.06);
+      border:1px solid rgba(120,100,255,0.18);
+      padding:20px;margin-bottom:16px;
+      transition:transform 0.3s ease,box-shadow 0.3s ease;
+    }
+    .float-window:hover{
+      transform:translateY(-4px);
+      box-shadow:0 12px 40px rgba(0,0,0,0.5),0 4px 16px rgba(88,28,220,0.25),inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .float-icon{
+      width:60px;height:60px;border-radius:16px;
+      display:flex;align-items:center;justify-content:center;font-size:28px;
+      box-shadow:0 6px 20px rgba(88,28,220,0.3);
+      background:linear-gradient(135deg,rgba(88,28,220,0.3),rgba(14,165,233,0.2));
+      border:2px solid rgba(120,100,255,0.3);
+      transition:transform 0.3s ease,box-shadow 0.3s ease;
+    }
+    .float-icon:hover{transform:scale(1.1) rotate(5deg);box-shadow:0 8px 25px rgba(88,28,220,0.5);}
+    .float-icon-sm{
+      width:44px;height:44px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;font-size:20px;
+      box-shadow:0 4px 15px rgba(88,28,220,0.2);
+      background:linear-gradient(135deg,rgba(88,28,220,0.25),rgba(14,165,233,0.15));
+      border:1.5px solid rgba(120,100,255,0.25);
+      transition:transform 0.2s ease;
+    }
+    .float-icon-sm:hover{transform:scale(1.08);}
+
+    .inp{
+      width:100%;padding:14px 16px;
+      background:rgba(10,10,40,0.7);
+      border:2px solid rgba(120,100,255,0.25);
+      border-radius:12px;color:#e8e8ff;
+      font-size:14px;font-weight:600;
+      transition:border-color 0.2s,box-shadow 0.2s;
+    }
+    .inp:focus{border-color:#7c3aed;box-shadow:0 0 0 4px rgba(124,58,237,0.2);}
+    textarea.inp{resize:vertical;line-height:1.6}
+
+    .btn{
+      padding:12px 24px;border-radius:12px;border:none;
+      background:linear-gradient(135deg,#4f46e5,#7c3aed);
+      color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.5px;
+      box-shadow:0 4px 15px rgba(79,70,229,0.4);transition:transform 0.2s,box-shadow 0.2s;
+    }
+    .btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(79,70,229,0.55);}
+    .btn-out{
+      padding:12px 24px;border-radius:12px;
+      border:2px solid #7c3aed;background:rgba(124,58,237,0.1);
+      color:#a78bfa;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;
+    }
+    .btn-out:hover{background:#7c3aed;color:#fff;}
+    .btn-full{
+      width:100%;padding:16px;border-radius:14px;border:none;
+      background:linear-gradient(135deg,#4f46e5,#7c3aed);
+      color:#fff;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;margin-top:12px;
+      box-shadow:0 6px 20px rgba(79,70,229,0.35);transition:transform 0.2s,box-shadow 0.2s;
+    }
+    .btn-full:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(79,70,229,0.5);}
+    .btn-full:disabled{background:linear-gradient(135deg,#2d2d4e,#3d3d5c);color:#666699;cursor:not-allowed;box-shadow:none;}
+    .btn-back{
+      width:44px;height:44px;border-radius:12px;
+      background:rgba(10,10,40,0.8);border:2px solid rgba(120,100,255,0.3);
+      color:#a78bfa;cursor:pointer;font-size:18px;font-weight:700;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.2s;
+    }
+    .btn-back:hover{background:#7c3aed;color:#fff;border-color:#7c3aed;}
+    .btn-logout{
+      padding:10px 16px;border-radius:10px;
+      background:rgba(239,68,68,0.12);border:2px solid #ef4444;
+      color:#f87171;cursor:pointer;font-size:12px;font-weight:700;transition:all 0.2s;
+    }
+    .btn-logout:hover{background:#ef4444;color:#fff;}
+
+    .lbl{display:block;font-size:11px;color:#a0a0cc;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:700}
+    .sec{font-size:12px;color:#a0a0cc;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid rgba(120,100,255,0.2);font-weight:700}
+
+    .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+    .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+
+    .hcard{
+      background:rgba(10,10,35,0.75);backdrop-filter:blur(20px);
+      border:2px solid transparent;border-radius:18px;
+      padding:24px 18px;cursor:pointer;text-align:center;
+      transition:all 0.3s ease;
+      box-shadow:0 8px 30px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.05);
+      width:100%;position:relative;overflow:hidden;
+    }
+    .hcard:hover{transform:translateY(-6px);box-shadow:0 12px 40px rgba(0,0,0,0.4),0 0 20px rgba(120,100,255,0.15);}
+
+    .sbox{
+      background:rgba(10,10,35,0.75);backdrop-filter:blur(15px);
+      border-radius:14px;padding:18px 12px;text-align:center;
+      box-shadow:0 6px 20px rgba(0,0,0,0.25);
+      border:2px solid rgba(120,100,255,0.15);transition:transform 0.2s;
+    }
+    .sbox:hover{transform:translateY(-3px);}
+
+    .pill{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+    .pill2{display:inline-flex;align-items:center;gap:4px;padding:8px 16px;border-radius:24px;font-size:12px;font-weight:700;border:2px solid;letter-spacing:0.5px;box-shadow:0 3px 10px rgba(0,0,0,0.2);}
+
+    .rbtn{
+      padding:18px 10px;border-radius:14px;border:2px solid rgba(120,100,255,0.2);cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+      background:rgba(10,10,40,0.6);transition:all 0.2s;width:100%;
+      box-shadow:0 4px 15px rgba(0,0,0,0.2);color:#e8e8ff;
+    }
+    .rbtn:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(88,28,220,0.25);}
+
+    .cbtn{
+      padding:14px 8px;border-radius:12px;border:2px solid rgba(120,100,255,0.2);cursor:pointer;
+      text-align:center;transition:all 0.2s;
+      background:rgba(10,10,40,0.6);color:#e8e8ff;
+      box-shadow:0 3px 12px rgba(0,0,0,0.2);
+    }
+    .cbtn:hover{transform:translateY(-2px);}
+
+    .ubtn{
+      padding:10px 18px;border-radius:24px;border:2px solid rgba(120,100,255,0.2);cursor:pointer;
+      font-size:12px;text-transform:uppercase;letter-spacing:1px;
+      background:rgba(10,10,40,0.6);color:#c8c8ee;transition:all 0.2s;font-weight:700;
+      box-shadow:0 3px 10px rgba(0,0,0,0.2);
+    }
+    .ubtn:hover{transform:translateY(-2px);}
+
+    .fbtn{
+      padding:8px 16px;border-radius:24px;font-size:11px;cursor:pointer;
+      text-transform:uppercase;letter-spacing:1px;
+      border:2px solid rgba(120,100,255,0.2);
+      background:rgba(10,10,40,0.6);color:#c8c8ee;
+      transition:all 0.2s;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2);
+    }
+    .fbtn:hover{transform:translateY(-2px);}
+    .fbtn.on{border-color:#7c3aed;background:rgba(124,58,237,0.2);color:#a78bfa;}
+
+    .ccard{
+      background:rgba(10,10,35,0.8);backdrop-filter:blur(15px);
+      border-radius:16px;padding:18px;margin-bottom:14px;
+      border-left:5px solid #7c3aed;border:2px solid rgba(120,100,255,0.12);
+      cursor:pointer;transition:all 0.2s;box-shadow:0 6px 20px rgba(0,0,0,0.25);
+    }
+    .ccard:hover{transform:translateY(-4px);box-shadow:0 10px 30px rgba(0,0,0,0.4),0 0 15px rgba(120,100,255,0.15);border-color:#7c3aed;}
+
+    .irow{background:rgba(10,10,40,0.5);border-radius:10px;padding:10px 14px;}
+
+    .scard{
+      background:rgba(10,10,35,0.85);backdrop-filter:blur(20px);
+      border:2px solid rgba(124,58,237,0.3);border-radius:20px;
+      padding:36px 24px;text-align:center;margin-top:24px;
+      box-shadow:0 10px 40px rgba(0,0,0,0.4),0 0 30px rgba(88,28,220,0.1);
+    }
+    .tbadge{
+      display:inline-block;padding:16px 32px;
+      background:linear-gradient(135deg,rgba(79,70,229,0.25),rgba(124,58,237,0.25));
+      border:3px solid #7c3aed;border-radius:16px;
+      font-size:24px;font-weight:800;color:#a78bfa;letter-spacing:6px;
+      font-family:'JetBrains Mono',monospace;
+      box-shadow:0 4px 15px rgba(124,58,237,0.3),0 0 20px rgba(124,58,237,0.1);
+    }
+
+    .pinbox{
+      background:rgba(10,10,35,0.85);backdrop-filter:blur(20px);
+      border-radius:20px;padding:36px 24px;text-align:center;margin-top:24px;
+      box-shadow:0 10px 40px rgba(0,0,0,0.4);border:1px solid rgba(120,100,255,0.15);
+    }
+
+    .empty{
+      text-align:center;padding:50px 24px;color:#6666aa;font-size:15px;font-weight:600;
+      border:2px dashed rgba(120,100,255,0.2);border-radius:16px;
+      background:rgba(10,10,40,0.4);
+    }
+
+    .reply{
+      padding:14px 16px;background:rgba(10,10,40,0.5);
+      border-radius:12px;margin-bottom:10px;
+      border-left:4px solid #7c3aed;box-shadow:0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .ibanner{
+      background:linear-gradient(135deg,rgba(5,46,22,0.8),rgba(6,78,59,0.8));
+      border:2px solid #22c55e;border-radius:16px;padding:18px;margin-bottom:20px;
+      display:flex;align-items:center;gap:14px;cursor:pointer;
+      box-shadow:0 6px 20px rgba(34,197,94,0.2);transition:transform 0.2s;
+    }
+    .ibanner:hover{transform:translateY(-3px);}
+
+    .toast{
+      position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+      padding:14px 28px;border-radius:30px;font-size:14px;font-weight:700;
+      z-index:9999;white-space:nowrap;
+      box-shadow:0 8px 30px rgba(0,0,0,0.4);
+      pointer-events:none;animation:fin 0.3s ease;
+    }
+    @keyframes fin{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+    /* Notification Bell */
+    .notif-bell-btn{
+      position:relative;width:44px;height:44px;border-radius:12px;
+      background:rgba(10,10,40,0.8);border:2px solid rgba(120,100,255,0.3);
+      color:#a78bfa;cursor:pointer;font-size:20px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.2s;
+    }
+    .notif-bell-btn:hover{background:#7c3aed;color:#fff;border-color:#7c3aed;}
+    .notif-bell-btn.has-new{
+      border-color:#f59e0b;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3),0 0 10px rgba(245,158,11,0.4);
+      animation:bell-pulse 2s infinite;
+    }
+    @keyframes bell-pulse{
+      0%,100%{box-shadow:0 4px 12px rgba(0,0,0,0.3),0 0 10px rgba(245,158,11,0.4);}
+      50%{box-shadow:0 4px 12px rgba(0,0,0,0.3),0 0 22px rgba(245,158,11,0.7);}
+    }
+    .notif-badge{
+      position:absolute;top:-6px;right:-6px;
+      min-width:20px;height:20px;padding:0 5px;
+      background:#ef4444;border-radius:10px;
+      font-size:11px;font-weight:800;color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      border:2px solid #060614;
+    }
+
+    /* Notification Panel */
+    .notif-panel{
+      position:fixed;top:0;right:0;bottom:0;
+      width:min(380px,100vw);
+      background:rgba(8,8,28,0.97);
+      backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+      border-left:1px solid rgba(120,100,255,0.25);
+      z-index:8000;display:flex;flex-direction:column;
+      box-shadow:-10px 0 40px rgba(0,0,0,0.6);
+      animation:slide-in-right 0.28s cubic-bezier(0.34,1.1,0.64,1);
+    }
+    @keyframes slide-in-right{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    .notif-panel-header{padding:20px 20px 16px;border-bottom:1px solid rgba(120,100,255,0.2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .notif-panel-body{flex:1;overflow-y:auto;padding:14px;}
+    .notif-item{
+      background:rgba(10,10,40,0.7);border:1px solid rgba(120,100,255,0.15);
+      border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;
+    }
+    .notif-item:hover{border-color:rgba(120,100,255,0.4);transform:translateX(-3px);}
+    .notif-item.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#f59e0b,#ef4444);border-radius:3px 0 0 3px;}
+    .notif-item.unread{background:rgba(15,12,50,0.8);border-color:rgba(245,158,11,0.25);}
+    .notif-dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;box-shadow:0 0 6px rgba(245,158,11,0.6);}
+    .notif-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:7999;backdrop-filter:blur(2px);animation:fade-in 0.2s ease;}
+    @keyframes fade-in{from{opacity:0}to{opacity:1}}
+
+    /* Resolution Banner */
+    .resolution-banner{
+      background:linear-gradient(135deg,rgba(5,46,22,0.92),rgba(6,60,40,0.92));
+      border:2px solid #22c55e;border-radius:16px;margin-bottom:16px;padding:18px 20px;
+      display:flex;align-items:flex-start;gap:14px;
+      box-shadow:0 6px 24px rgba(34,197,94,0.2);position:relative;overflow:hidden;
+      animation:banner-slide-down 0.4s cubic-bezier(0.34,1.1,0.64,1);
+    }
+    @keyframes banner-slide-down{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+    .banner-dismiss{
+      position:absolute;top:12px;right:12px;
+      background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);
+      color:#4ade80;cursor:pointer;border-radius:8px;
+      width:28px;height:28px;font-size:14px;
+      display:flex;align-items:center;justify-content:center;transition:all 0.2s;
+    }
+    .banner-dismiss:hover{background:rgba(34,197,94,0.3);color:#fff;}
+
+    /* FABs */
+    .fab-container{position:fixed;bottom:24px;right:16px;display:flex;flex-direction:column;gap:12px;z-index:500;}
+    .fab{
+      width:52px;height:52px;border-radius:16px;border:none;cursor:pointer;
+      font-size:20px;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 6px 20px rgba(0,0,0,0.4);transition:transform 0.2s,box-shadow 0.2s;
+    }
+    .fab:hover{transform:scale(1.1);box-shadow:0 8px 25px rgba(0,0,0,0.5);}
+    .fab-primary{background:linear-gradient(135deg,#4f46e5,#7c3aed);}
+    .fab-secondary{background:rgba(10,10,40,0.9);border:2px solid rgba(120,100,255,0.3);}
+
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .fadein{animation:fadeIn .3s ease;}
+  </style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading">
+  <div style="font-size:56px">🏛️</div>
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:#7c3aed;letter-spacing:3px;font-weight:700">CONNECTING TO CLOUD...</div>
+</div>
+
+<div id="root" style="display:none"></div>
+
+<script>
+// ╔══════════════════════════════════════════════════════════╗
+// ║               CONFIGURATION — EDIT HERE                 ║
+// ╚══════════════════════════════════════════════════════════╝
+
+const ADMIN_PIN = "1234"; // ← Change this!
+
+const LOCATIONS = [
+  "Admin Block","Millenium Block","EEE Block",
+  "Mechanical Block","CV Raman Block","Silver Jubilee 1","Silver Jubilee 2",
+  "Cafeteria","Kaveri Block","Netravathi Block",
+  "Silver Jubilee Girls Hostel","Krishana Block","Bhadra Block","Tunga Block"
+];
+
+const CATEGORIES = [
+  {id:"electrical",    label:"Electrical",    icon:"⚡", color:"#fbbf24"},
+  {id:"plumbing",      label:"Plumbing",      icon:"🚿", color:"#38bdf8"},
+  {id:"infrastructure",label:"Infrastructure",icon:"🏗️", color:"#fb923c"},
+  {id:"cleanliness",   label:"Cleanliness",   icon:"🧹", color:"#4ade80"},
+  {id:"safety",        label:"Safety",        icon:"🛡️", color:"#f87171"},
+  {id:"network",       label:"Network / IT",  icon:"📡", color:"#c084fc"},
+  {id:"hostel",        label:"Hostel",        icon:"🏠", color:"#34d399"},
+  {id:"other",         label:"Other",         icon:"📋", color:"#94a3b8"}
+];
+
+const ROLES = [
+  {id:"student", label:"Student",         icon:"🎓"},
+  {id:"staff",   label:"Staff / Faculty", icon:"👨‍🏫"},
+  {id:"warden",  label:"Hostel Warden",   icon:"🏠"}
+];
+
+const DEPARTMENTS = [
+  "Electrical Dept","Civil / Maintenance","Housekeeping",
+  "IT Department","Hostel Management","Admin Office","Security"
+];
+
+const PRIORITY = {
+  low:     {label:"Low",     color:"#4ade80",bg:"rgba(74,222,128,0.15)"},
+  medium:  {label:"Medium",  color:"#fbbf24",bg:"rgba(251,191,36,0.15)"},
+  high:    {label:"High",    color:"#fb923c",bg:"rgba(251,146,60,0.15)"},
+  critical:{label:"Critical",color:"#f87171",bg:"rgba(248,113,113,0.15)"}
+};
+
+const STATUS = {
+  open:        {label:"Open",        color:"#f87171",icon:"🔴"},
+  in_progress: {label:"In Progress", color:"#fbbf24",icon:"🟡"},
+  resolved:    {label:"Resolved",    color:"#4ade80",icon:"🟢"},
+  closed:      {label:"Closed",      color:"#94a3b8",icon:"⚫"}
+};
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║               HELPERS                                   ║
+// ╚══════════════════════════════════════════════════════════╝
+
+const genId  = () => "CPR-" + Math.floor(1000 + Math.random() * 9000);
+const nowStr = () => new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"});
+
+// Notification helpers (local — per device)
+const loadNotifs    = () => { try{ return JSON.parse(localStorage.getItem("campus_notifs")||"[]") }catch(e){ return [] } };
+const saveNotifs    = (n) => { try{ localStorage.setItem("campus_notifs", JSON.stringify(n)) }catch(e){} };
+const loadDismissed = () => { try{ return new Set(JSON.parse(localStorage.getItem("campus_dismissed")||"[]")) }catch(e){ return new Set() } };
+const saveDismissed = (s) => { try{ localStorage.setItem("campus_dismissed", JSON.stringify([...s])) }catch(e){} };
+const loadApiKey    = () => localStorage.getItem("campus_apikey")||"";
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║                   STATE                                 ║
+// ╚══════════════════════════════════════════════════════════╝
+
+const S = {
+  view: "home",
+  complaints: [],          // ← live from Firebase (all phones)
+  role:"", name:"", contact:"", location:"", category:"", desc:"", urgency:"",
+  apiKey: loadApiKey(),
+  submitting: false,
+  ticket: null,
+  trackQ: "",
+  pin: "", pinErr: false, adminOK: false,
+  aFilter:"all", aSearch:"",
+  sel: null, dStatus:"", dDept:"", dReply:"",
+  toast: null, toastT: null,
+  pwaPrompt: null,
+  // notifications (local per-device)
+  notifs: loadNotifs(),
+  notifOpen: false,
+  dismissed: loadDismissed(),
+  unsubscribe: null
+};
+
+function set(patch){ Object.assign(S, patch); draw(); }
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║            FIREBASE OPERATIONS                          ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function startListener(){
+  if(S.unsubscribe) S.unsubscribe();
+  try{
+    const q = window._query(window._col(), window._orderBy("submittedAtMs","desc"));
+    S.unsubscribe = window._onSnapshot(q, snapshot => {
+      const prev = S.complaints.map(c=>c.id);
+      S.complaints = snapshot.docs.map(d => ({docId:d.id, ...d.data()}));
+      // Push notif for admin: new complaint arrived that wasn't in prev list
+      if(S.adminOK){
+        S.complaints.forEach(c => {
+          if(!prev.includes(c.id)){
+            pushNotif(c.id, c.summary || c.description || "New complaint");
+          }
+        });
+      }
+      draw();
+    });
+  } catch(e){ console.warn("Firebase listener error", e); }
+}
+
+async function fbAdd(data){
+  return await window._addDoc(window._col(), data);
+}
+
+async function fbUpdate(docId, data){
+  return await window._updateDoc(window._doc(window._db, "complaints", docId), data);
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║              AI ANALYSIS (OPTIONAL)                     ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function autoAssignDept(cat){
+  const map = {
+    electrical:"Electrical Dept", plumbing:"Civil / Maintenance",
+    infrastructure:"Civil / Maintenance", cleanliness:"Housekeeping",
+    safety:"Security", network:"IT Department", hostel:"Hostel Management", other:"Admin Office"
+  };
+  return map[cat]||"Admin Office";
+}
+
+async function callAI(){
+  const fallback = {
+    priority: S.urgency||"medium",
+    summary: S.desc.slice(0,80),
+    assignDept: autoAssignDept(S.category),
+    estimatedTime:"2-3 days",
+    safetyNote:""
+  };
+  if(!S.apiKey) return fallback;
+  try{
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-api-key": S.apiKey,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:500,
+        messages:[{role:"user",content:
+          `Campus complaint. Reply ONLY with JSON, no markdown.
+Category:${S.category}, Location:${S.location}, Description:${S.desc}, Urgency:${S.urgency||"not stated"}
+JSON fields:
+- priority: "low"|"medium"|"high"|"critical"
+- summary: one sentence
+- assignDept: one of [Electrical Dept, Civil / Maintenance, Housekeeping, IT Department, Hostel Management, Admin Office, Security]
+- estimatedTime: e.g. "1-2 days"
+- safetyNote: safety concern or ""`
+        }]
+      })
+    });
+    const d = await res.json();
+    if(d.error) return fallback;
+    const txt = (d.content||[]).map(i=>i.text||"").join("");
+    return {...fallback, ...JSON.parse(txt.replace(/```json|```/g,"").trim())};
+  }catch(e){ return fallback; }
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║                   TOAST                                 ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function toast(msg, type="ok"){
+  if(S.toastT) clearTimeout(S.toastT);
+  const t = setTimeout(()=>set({toast:null,toastT:null}), 3500);
+  set({toast:{msg,type}, toastT:t});
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║           NOTIFICATION HELPERS                          ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function pushNotif(complaintId, complaintTitle){
+  const notif = {id:"N-"+Date.now(), complaintId, complaintTitle, at:nowStr(), read:false};
+  const updated = [notif, ...S.notifs];
+  S.notifs = updated;
+  saveNotifs(updated);
+}
+
+function markAllRead(){
+  const updated = S.notifs.map(n => ({...n, read:true}));
+  S.notifs = updated;
+  saveNotifs(updated);
+  draw();
+}
+
+function clearNotifs(){
+  S.notifs = [];
+  saveNotifs([]);
+  draw();
+}
+
+function unreadCount(){ return S.notifs.filter(n=>!n.read).length; }
+
+function dismissResolutionBanner(complaintId){
+  S.dismissed.add(complaintId);
+  saveDismissed(S.dismissed);
+  draw();
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║              DOM BUILDER                                ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs||{})){
+    if(k==="cls")       e.className=v;
+    else if(k==="style" && typeof v==="object") Object.assign(e.style,v);
+    else if(k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(),v);
+    else if(typeof v==="boolean"){ if(v) e.setAttribute(k,""); else e.removeAttribute(k); }
+    else e.setAttribute(k,v);
+  }
+  for(const k of kids.flat(9)){
+    if(k==null||k===false) continue;
+    e.appendChild(typeof k==="string"||typeof k==="number"
+      ? document.createTextNode(String(k)) : k);
+  }
+  return e;
+}
+
+// ── Small reusable pieces ──────────────────────────────────
+
+function floatIcon(emoji, color, size="normal"){
+  const cls = size==="sm" ? "float-icon-sm" : "float-icon";
+  return h("div",{cls,style:{background:`linear-gradient(135deg,rgba(88,28,220,0.2),${color}20)`}},emoji);
+}
+
+function pill(label,color,bg,big){
+  return h("span",{cls:big?"pill2":"pill",style:{color,borderColor:color,background:bg}},label);
+}
+
+function statBox(label,value,color){
+  return h("div",{cls:"sbox",style:{borderColor:color+"44"}},
+    h("div",{style:{fontSize:"28px",fontWeight:"800",color}},String(value)),
+    h("div",{style:{fontSize:"11px",color:"#a0a0cc",letterSpacing:"2px",marginTop:"4px",fontWeight:"700"}},label.toUpperCase())
+  );
+}
+
+function irow(label,value,color){
+  return h("div",{cls:"irow"},
+    h("div",{style:{fontSize:"10px",color:"#8888aa",letterSpacing:"2px",marginBottom:"3px",fontWeight:"700"}},label.toUpperCase()),
+    h("div",{style:{fontSize:"13px",color:color||"#e8e8ff",fontWeight:"600"}},value||"—")
+  );
+}
+
+function header(title, backFn){
+  const isAdmin = S.adminOK && (S.view==="admin"||S.view==="detail");
+  return h("div",{cls:"float-window",style:{display:"flex",alignItems:"center",gap:"14px",padding:"14px 18px",justifyContent:"space-between"}},
+    h("div",{style:{display:"flex",alignItems:"center",gap:"14px"}},
+      h("button",{cls:"btn-back",onClick:backFn},"←"),
+      h("div",{style:{fontSize:"20px",fontWeight:"800",color:"#e8e8ff"}},title)
+    ),
+    isAdmin
+      ? h("div",{style:{display:"flex",gap:"10px",alignItems:"center"}},
+          h("span",{cls:"live-badge"},h("span",{cls:"live-dot"}),"LIVE"),
+          notifBell()
+        )
+      : h("span",{cls:"live-badge",style:{fontSize:"10px"}},h("span",{cls:"live-dot"}),"LIVE SYNC")
+  );
+}
+
+function sectionLabel(txt){ return h("div",{cls:"sec"},txt); }
+
+// ── Complaint card ──────────────────────────────────────────
+
+function complaintCard(c, isAdmin, onClick){
+  const p   = PRIORITY[c.priority]||PRIORITY.medium;
+  const s   = STATUS[c.status]||STATUS.open;
+  const cat = CATEGORIES.find(x=>x.id===c.category);
+  const txt = (c.summary||c.description||"").slice(0,100);
+
+  return h("div",{cls:"ccard fadein",style:{borderLeftColor:p.color,cursor:onClick?"pointer":"default"},onClick:onClick||null},
+    h("div",{style:{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px"}},
+      h("div",{style:{display:"flex",gap:"10px",alignItems:"center",flexWrap:"wrap"}},
+        floatIcon(cat?.icon||"📋",cat?.color||"#94a3b8","sm"),
+        h("span",{style:{fontSize:"15px",fontWeight:"800",color:"#a78bfa",letterSpacing:"2px",fontFamily:"'JetBrains Mono',monospace"}},c.id),
+        pill(p.label,p.color,p.bg),
+        pill(s.icon+" "+s.label,s.color,s.color+"22")
+      ),
+      h("span",{style:{fontSize:"12px",color:"#8888aa",fontWeight:"600"}},c.submittedAt)
+    ),
+    h("div",{style:{fontSize:"14px",color:"#c8c8ee",marginBottom:"10px",lineHeight:"1.6",fontWeight:"600"}},
+      txt + (txt.length<(c.summary||c.description||"").length?"…":"")
+    ),
+    h("div",{style:{display:"flex",gap:"16px",fontSize:"12px",color:"#9999bb",flexWrap:"wrap",fontWeight:"600"}},
+      h("span",{},"📍 "+c.location),
+      isAdmin ? h("span",{},"👤 "+(c.name||"Anon")+" ["+(c.role||"—")+"]") : null,
+      c.assignDept ? h("span",{},"🏢 "+c.assignDept) : null,
+      (c.replies?.length>0) ? h("span",{style:{color:"#4ade80"}},"💬 "+c.replies.length+" repl"+(c.replies.length>1?"ies":"y")) : null
+    ),
+    onClick ? h("div",{style:{marginTop:"10px",fontSize:"12px",color:"#a78bfa",letterSpacing:"1px",fontWeight:"700"}},"TAP TO MANAGE →") : null
+  );
+}
+
+// ── FABs ────────────────────────────────────────────────────
+
+function fabButtons(){
+  if(S.view==="home") return null;
+  return h("div",{cls:"fab-container"},
+    h("button",{cls:"fab fab-secondary",onClick:()=>set({view:"home",sel:null}),title:"Home"},"🏠"),
+    S.view!=="submit" ? h("button",{cls:"fab fab-primary",onClick:()=>set({view:"submit"}),title:"New Complaint"},"✏️") : null
+  );
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║           NOTIFICATION BELL WIDGET                      ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function notifBell(){
+  const count = unreadCount();
+  const btn = h("button",{
+    cls:"notif-bell-btn" + (count>0?" has-new":""),
+    onClick:()=>{ if(!S.notifOpen){ markAllRead(); } set({notifOpen:!S.notifOpen}); },
+    title:"Notifications"
+  },"🔔");
+  if(count>0){
+    btn.appendChild(h("span",{cls:"notif-badge"},count>9?"9+":String(count)));
+  }
+  return btn;
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║           NOTIFICATION PANEL                            ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function notifPanel(){
+  if(!S.notifOpen) return null;
+
+  const frag = document.createDocumentFragment();
+  const overlay = h("div",{cls:"notif-overlay",onClick:()=>set({notifOpen:false})});
+  frag.appendChild(overlay);
+
+  const panel = h("div",{cls:"notif-panel"});
+
+  panel.appendChild(h("div",{cls:"notif-panel-header"},
+    h("div",{},
+      h("div",{style:{fontSize:"11px",color:"#8888aa",letterSpacing:"3px",fontWeight:"700"}},"ADMIN"),
+      h("div",{style:{fontSize:"18px",fontWeight:"800",color:"#e8e8ff"}},"🔔 Notifications")
+    ),
+    h("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
+      S.notifs.length > 0
+        ? h("button",{cls:"fbtn",style:{fontSize:"10px",padding:"6px 10px"},onClick:(e)=>{e.stopPropagation();clearNotifs();}},"Clear all")
+        : null,
+      h("button",{cls:"btn-back",onClick:()=>set({notifOpen:false})},"✕")
+    )
+  ));
+
+  const body = h("div",{cls:"notif-panel-body"});
+  if(S.notifs.length === 0){
+    body.appendChild(h("div",{style:{textAlign:"center",padding:"50px 20px",color:"#6666aa",fontWeight:"600"}},
+      h("div",{style:{fontSize:"40px",marginBottom:"12px"}},"🔕"),
+      h("div",{style:{fontSize:"14px"}},"No notifications yet"),
+      h("div",{style:{fontSize:"12px",marginTop:"6px",color:"#4444aa"}},"New complaints will appear here")
+    ));
+  } else {
+    S.notifs.forEach(n=>{
+      const complaint = S.complaints.find(c=>c.id===n.complaintId);
+      const cat = complaint ? CATEGORIES.find(x=>x.id===complaint.category) : null;
+      const item = h("div",{cls:"notif-item"+(n.read?"":" unread"),
+        onClick:(e)=>{
+          e.stopPropagation();
+          if(complaint){
+            set({notifOpen:false, adminOK:true, view:"admin", sel:complaint, dStatus:complaint.status, dDept:complaint.assignDept||"", dReply:""});
+          }
+        }
+      },
+        h("div",{style:{display:"flex",gap:"10px",alignItems:"flex-start"}},
+          !n.read ? h("div",{cls:"notif-dot",style:{marginTop:"4px"}}) : h("div",{style:{width:"8px",flexShrink:"0"}}),
+          h("div",{style:{flex:"1",minWidth:0}},
+            h("div",{style:{display:"flex",gap:"8px",alignItems:"center",marginBottom:"4px",flexWrap:"wrap"}},
+              cat ? h("span",{style:{fontSize:"16px"}},cat.icon) : h("span",{},"📋"),
+              h("span",{style:{fontSize:"13px",fontWeight:"800",color:"#a78bfa",letterSpacing:"2px",fontFamily:"'JetBrains Mono',monospace"}},n.complaintId)
+            ),
+            h("div",{style:{fontSize:"13px",color:"#c8c8ee",fontWeight:"600",lineHeight:"1.4",marginBottom:"6px"}},
+              "New complaint: " + (n.complaintTitle||"").slice(0,60) + ((n.complaintTitle||"").length>60?"…":"")
+            ),
+            h("div",{style:{fontSize:"11px",color:"#8888aa",fontWeight:"600"}},"🕐 "+n.at),
+            complaint
+              ? h("div",{style:{marginTop:"6px",fontSize:"11px",color:"#4ade80",fontWeight:"700"}},
+                  "📍 "+complaint.location+" · "+(PRIORITY[complaint.priority]||{label:""}).label+" priority")
+              : null
+          )
+        )
+      );
+      body.appendChild(item);
+    });
+  }
+  panel.appendChild(body);
+  frag.appendChild(panel);
+  return frag;
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║          RESOLUTION BANNER WIDGET                       ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function resolutionBanners(complaints){
+  const resolved = complaints.filter(c => c.status==="resolved" && !S.dismissed.has(c.id));
+  if(resolved.length === 0) return null;
+  const wrap = h("div",{});
+  resolved.forEach(c=>{
+    const cat = CATEGORIES.find(x=>x.id===c.category);
+    const banner = h("div",{cls:"resolution-banner"},
+      h("div",{style:{flexShrink:0,marginTop:"2px"}},h("div",{style:{fontSize:"32px"}},"🎉")),
+      h("div",{style:{flex:1,minWidth:0}},
+        h("div",{style:{fontSize:"14px",fontWeight:"800",color:"#4ade80",marginBottom:"4px"}},"Your complaint has been resolved!"),
+        h("div",{style:{display:"flex",gap:"8px",alignItems:"center",marginBottom:"6px",flexWrap:"wrap"}},
+          h("span",{style:{fontSize:"16px"}},cat?.icon||"📋"),
+          h("span",{style:{fontSize:"13px",fontWeight:"800",color:"#a78bfa",letterSpacing:"2px",fontFamily:"'JetBrains Mono',monospace"}},c.id),
+          h("span",{cls:"pill",style:{color:"#4ade80",borderColor:"#4ade80",background:"rgba(74,222,128,0.12)"}},"🟢 Resolved")
+        ),
+        h("div",{style:{fontSize:"13px",color:"#86efac",fontWeight:"600",lineHeight:"1.4"}},
+          (c.summary||c.description||"").slice(0,80)+"…"
+        ),
+        (c.replies||[]).length > 0
+          ? h("div",{style:{marginTop:"8px",padding:"10px 12px",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:"10px"}},
+              h("div",{style:{fontSize:"10px",color:"#6b7280",letterSpacing:"2px",marginBottom:"4px",fontWeight:"700"}},"ADMIN REPLY"),
+              h("div",{style:{fontSize:"13px",color:"#c8c8ee",fontWeight:"600"}},
+                c.replies[c.replies.length-1].text.slice(0,100)+(c.replies[c.replies.length-1].text.length>100?"…":"")
+              )
+            )
+          : null
+      ),
+      h("button",{cls:"banner-dismiss",onClick:(e)=>{e.stopPropagation();dismissResolutionBanner(c.id);}},"✕")
+    );
+    wrap.appendChild(banner);
+  });
+  return wrap;
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║               VIEW: HOME                                ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function pageHome(){
+  const d = S.complaints;
+  const open = d.filter(c=>c.status==="open").length;
+  const prog = d.filter(c=>c.status==="in_progress").length;
+  const done = d.filter(c=>c.status==="resolved").length;
+
+  function navCard(icon,title,desc,color,view){
+    const c = h("button",{cls:"hcard",style:{borderColor:color+"33"},onClick:()=>set({view})},
+      h("div",{style:{marginBottom:"12px"}},floatIcon(icon,color)),
+      h("div",{style:{fontSize:"16px",fontWeight:"800",color:"#e8e8ff",marginBottom:"8px"}},title),
+      h("div",{style:{fontSize:"13px",color:"#a0a0cc",lineHeight:"1.5",fontWeight:"600"}},desc)
+    );
+    c.addEventListener("mouseenter",()=>{c.style.borderColor=color;});
+    c.addEventListener("mouseleave",()=>{c.style.borderColor=color+"33";});
+    return c;
+  }
+
+  return h("div",{cls:"page"},
+    S.pwaPrompt ? h("div",{cls:"ibanner",onClick:async()=>{
+      S.pwaPrompt.prompt();
+      await S.pwaPrompt.userChoice;
+      set({pwaPrompt:null});
+    }},
+      floatIcon("📲","#4ade80"),
+      h("div",{},
+        h("div",{style:{fontSize:"14px",fontWeight:"800",color:"#fff"}},"Install App on your Phone"),
+        h("div",{style:{fontSize:"12px",color:"#86efac",marginTop:"3px",fontWeight:"600"}},"Tap to add to Home Screen")
+      )
+    ) : null,
+
+    h("div",{cls:"float-window",style:{textAlign:"center",padding:"36px 20px"}},
+      h("div",{style:{display:"inline-block",marginBottom:"16px"}},floatIcon("🏛️","#7c3aed")),
+      h("div",{style:{fontSize:"11px",color:"#7c3aed",letterSpacing:"5px",fontWeight:"700",marginBottom:"10px"}},"SMART CAMPUS SYSTEM"),
+      h("h1",{style:{fontSize:"28px",fontWeight:"800",color:"#e8e8ff",margin:"0 0 10px",lineHeight:"1.2"}},"Campus Complaint Portal"),
+      h("p",{style:{fontSize:"14px",color:"#8888bb",letterSpacing:"1px",fontWeight:"500",marginBottom:"14px"}},"Report issues · Track status · Get it resolved"),
+      h("div",{style:{display:"flex",justifyContent:"center",gap:"12px",flexWrap:"wrap"}},
+        h("span",{cls:"live-badge"},h("span",{cls:"live-dot"}),"ALL PHONES SYNCED — LIVE")
+      )
+    ),
+
+    h("div",{cls:"g3"},
+      statBox("Open",open,"#f87171"),
+      statBox("In Progress",prog,"#fbbf24"),
+      statBox("Resolved",done,"#4ade80")
+    ),
+
+    h("div",{cls:"gcards"},
+      navCard("📝","Submit Complaint","Report a problem on campus","#7c3aed","submit"),
+      navCard("🔍","Track My Complaint","Check status using your ticket ID","#c084fc","track"),
+      navCard("🛡️","Admin / Management","View & manage all complaints","#34d399","pingate")
+    ),
+
+    h("div",{style:{textAlign:"center",marginTop:"24px",color:"#6666aa",fontSize:"11px",letterSpacing:"3px",fontWeight:"700",paddingBottom:"10px"}},
+      "POWERED BY AI · FIREBASE REALTIME · " + new Date().getFullYear())
+  );
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║           VIEW: SUBMIT COMPLAINT                        ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function pageSubmit(){
+  if(S.ticket){
+    const t = S.ticket;
+    const p = PRIORITY[t.priority]||PRIORITY.medium;
+    return h("div",{cls:"page"},
+      h("div",{cls:"scard"},
+        h("div",{style:{display:"inline-block",marginBottom:"14px"}},floatIcon("✅","#4ade80")),
+        h("div",{style:{fontSize:"24px",fontWeight:"800",color:"#4ade80",marginBottom:"8px"}},"Complaint Submitted!"),
+        h("div",{style:{fontSize:"14px",color:"#a0a0cc",marginBottom:"24px",fontWeight:"600"}},"Save your Ticket ID to track status"),
+        h("div",{cls:"tbadge"},t.id),
+        h("div",{style:{margin:"20px 0",display:"grid",gap:"10px"}},
+          irow("Priority",p.label,p.color),
+          irow("Assigned To",t.assignDept),
+          irow("Est. Time",t.estimatedTime),
+          t.safetyNote ? irow("⚠️ Safety",t.safetyNote,"#f87171") : null
+        ),
+        h("div",{style:{fontSize:"13px",color:"#4ade80",marginBottom:"16px",padding:"12px",background:"rgba(74,222,128,0.08)",borderRadius:"10px",border:"1px solid rgba(74,222,128,0.2)"}},
+          "✅ Complaint saved to cloud! Management can see it on all devices now."
+        ),
+        h("div",{style:{display:"flex",gap:"12px",justifyContent:"center",flexWrap:"wrap"}},
+          h("button",{cls:"btn-out",onClick:()=>set({ticket:null,role:"",name:"",contact:"",location:"",category:"",desc:"",urgency:""})},"Submit Another"),
+          h("button",{cls:"btn",onClick:()=>set({view:"home",ticket:null})},"🏠 Home")
+        )
+      )
+    );
+  }
+
+  const valid = S.role && S.name && S.location && S.category && S.desc.trim().length > 10;
+  const missing = [];
+  if(!S.role) missing.push("role");
+  if(!S.name) missing.push("name");
+  if(!S.location) missing.push("location");
+  if(!S.category) missing.push("category");
+  if(S.desc.trim().length <= 10) missing.push("description (min 10 chars)");
+
+  const roleGrid = h("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}},
+    ...ROLES.map(r => h("button",{
+      cls:"rbtn",
+      style:{borderColor:S.role===r.id?"#7c3aed":"rgba(120,100,255,0.2)",background:S.role===r.id?"rgba(124,58,237,0.2)":"rgba(10,10,40,0.6)"},
+      onClick:()=>{S.role=r.id;draw();}
+    },
+      floatIcon(r.icon, S.role===r.id?"#7c3aed":"#6b6b8a","sm"),
+      h("span",{style:{fontSize:"13px",color:"#e8e8ff",fontWeight:"700"}},r.label)
+    ))
+  );
+
+  const nameInp = h("input",{cls:"inp",type:"text",placeholder:"Your full name",value:S.name});
+  nameInp.addEventListener("input",e=>{S.name=e.target.value;});
+
+  const ctcInp = h("input",{cls:"inp",type:"text",placeholder:"Phone / Email (optional)",value:S.contact});
+  ctcInp.addEventListener("input",e=>{S.contact=e.target.value;});
+
+  const locSel = h("select",{cls:"inp"},
+    h("option",{value:""},"Select location..."),
+    ...LOCATIONS.map(l=>{ const o=h("option",{value:l},l); if(S.location===l)o.selected=true; return o; })
+  );
+  locSel.addEventListener("change",e=>{S.location=e.target.value;draw();});
+
+  const catGrid = h("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px"}},
+    ...CATEGORIES.map(c=>{
+      const active = S.category===c.id;
+      return h("button",{
+        cls:"cbtn",
+        style:{borderColor:active?c.color:"rgba(120,100,255,0.2)",background:active?c.color+"20":"rgba(10,10,40,0.6)",boxShadow:active?`0 4px 15px ${c.color}44`:"0 3px 12px rgba(0,0,0,0.2)"},
+        onClick:()=>{S.category=c.id;draw();}
+      },
+        h("div",{style:{fontSize:"22px",marginBottom:"4px"}},c.icon),
+        h("div",{style:{fontSize:"11px",fontWeight:"700",color:"#c8c8ee"}},c.label)
+      );
+    })
+  );
+
+  const descTA = h("textarea",{cls:"inp",rows:"4",placeholder:"Explain clearly… (at least 10 characters)"},S.desc);
+  descTA.addEventListener("input",e=>{S.desc=e.target.value;});
+
+  const urgRow = h("div",{style:{display:"flex",gap:"10px",flexWrap:"wrap"}},
+    ...["low","medium","high","critical"].map(u=>{
+      const active = S.urgency===u;
+      return h("button",{
+        cls:"ubtn",
+        style:{borderColor:active?PRIORITY[u].color:"rgba(120,100,255,0.2)",background:active?PRIORITY[u].bg:"rgba(10,10,40,0.6)",color:active?PRIORITY[u].color:"#c8c8ee"},
+        onClick:()=>{S.urgency=u;draw();}
+      },u);
+    })
+  );
+
+  // Optional AI key
+  const apiKeyInp = h("input",{cls:"inp",type:"password",
+    placeholder:"sk-ant-… (optional, enables AI priority analysis)",value:S.apiKey,
+    style:{fontSize:"13px",letterSpacing:"1px"}});
+  apiKeyInp.addEventListener("input",e=>{
+    S.apiKey=e.target.value;
+    localStorage.setItem("campus_apikey",e.target.value);
+  });
+
+  const subBtn = h("button",{
+    cls:"btn-full",
+    onClick: async()=>{
+      const liveValid = S.role && S.name && S.location && S.category && S.desc.trim().length > 10;
+      if(!liveValid||S.submitting) return;
+      set({submitting:true});
+      const ai = await callAI();
+      const now = new Date();
+      const t = {
+        id: genId(), ...ai,
+        role:S.role, name:S.name, contact:S.contact,
+        location:S.location, category:S.category,
+        description:S.desc, urgency:S.urgency||"medium",
+        status:"open",
+        submittedAt: nowStr(),
+        submittedAtMs: now.getTime(),
+        updatedAt: nowStr(),
+        replies:[]
+      };
+      try{
+        const ref = await fbAdd(t);
+        t.docId = ref.id;
+        toast("✅ Complaint submitted & synced to cloud! All devices updated.");
+      } catch(e){
+        toast("⚠️ Cloud sync failed. Check internet connection.","err");
+      }
+      set({submitting:false, ticket:t, role:"",name:"",contact:"",location:"",category:"",desc:"",urgency:""});
+    }
+  }, S.submitting?"⚙️ Analyzing & Saving to Cloud…":"🚀 Submit Complaint");
+  subBtn.disabled = !valid || S.submitting;
+
+  return h("div",{cls:"page"},
+    header("Submit Complaint", ()=>set({view:"home"})),
+    h("div",{cls:"float-window"},sectionLabel("WHO ARE YOU?"),roleGrid),
+    h("div",{cls:"float-window"},
+      sectionLabel("YOUR DETAILS"),
+      h("div",{cls:"g2"},
+        h("div",{},h("label",{cls:"lbl"},"NAME *"),nameInp),
+        h("div",{},h("label",{cls:"lbl"},"CONTACT (OPTIONAL)"),ctcInp)
+      )
+    ),
+    h("div",{cls:"float-window"},
+      sectionLabel("ISSUE DETAILS"),
+      h("div",{},h("label",{cls:"lbl"},"LOCATION *"),locSel),
+      h("div",{style:{marginTop:"14px"}},h("label",{cls:"lbl"},"CATEGORY *"),catGrid),
+      h("div",{style:{marginTop:"14px"}},h("label",{cls:"lbl"},"DESCRIBE THE PROBLEM *"),descTA),
+      h("div",{style:{marginTop:"14px"}},h("label",{cls:"lbl"},"URGENCY"),urgRow)
+    ),
+    h("div",{cls:"float-window"},
+      sectionLabel("AI ANALYSIS (OPTIONAL)"),
+      h("div",{style:{fontSize:"12px",color:"#8888aa",marginBottom:"10px",fontWeight:"600"}},
+        "Add your Anthropic API key to enable AI priority detection and auto-assignment."),
+      h("label",{cls:"lbl"},"ANTHROPIC API KEY"),apiKeyInp
+    ),
+    !valid ? h("div",{style:{fontSize:"12px",color:"#f87171",textAlign:"center",marginTop:"8px",fontWeight:"600",padding:"10px 16px",background:"rgba(248,113,113,0.08)",borderRadius:"10px",border:"1px solid rgba(248,113,113,0.2)"}},
+      "⚠️ Please fill in: "+missing.join(", ")) : null,
+    subBtn
+  );
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║           VIEW: TRACK COMPLAINT                         ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function pageTrack(){
+  const q = S.trackQ;
+  const found = q.trim().length > 2
+    ? S.complaints.filter(c =>
+        c.id.toLowerCase().includes(q.toLowerCase()) ||
+        (c.name||"").toLowerCase().includes(q.toLowerCase())
+      )
+    : [];
+
+  const inp = h("input",{cls:"inp",type:"text",
+    placeholder:"e.g.  CPR-4521   or   your name…",
+    value:q,style:{fontSize:"16px",textAlign:"center",letterSpacing:"2px"}});
+  inp.addEventListener("input",e=>{
+    S.trackQ = e.target.value;
+    const cursor = e.target.selectionStart;
+    draw();
+    const newInp = document.querySelector('#root input[placeholder*="CPR"]');
+    if(newInp){newInp.focus();try{newInp.setSelectionRange(cursor,cursor);}catch(x){}}
+  });
+
+  const banners = found.length > 0 ? resolutionBanners(found) : null;
+
+  return h("div",{cls:"page"},
+    header("Track Complaint", ()=>set({view:"home"})),
+    h("div",{cls:"float-window",style:{textAlign:"center"}},
+      h("div",{style:{display:"inline-block",marginBottom:"14px"}},floatIcon("🔍","#c084fc")),
+      h("div",{style:{fontSize:"14px",color:"#a0a0cc",marginBottom:"14px",fontWeight:"600"}},"Enter your Ticket ID or Name"),
+      inp,
+      h("div",{style:{marginTop:"12px",display:"flex",justifyContent:"center"}},
+        h("span",{cls:"live-badge"},h("span",{cls:"live-dot"}),"Searching live cloud data")
+      )
+    ),
+    banners,
+    q.trim().length>2 && found.length===0 ? h("div",{cls:"empty"},"😕 No complaint found. Check your Ticket ID.") : null,
+    ...found.map(c=>complaintCard(c,false,null))
+  );
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║             VIEW: PIN GATE                              ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function pagePinGate(){
+  function tryUnlock(){
+    if(S.pin===ADMIN_PIN) set({adminOK:true,view:"admin",pinErr:false,pin:""});
+    else set({pinErr:true,pin:""});
+  }
+  const inp = h("input",{type:"password",cls:"inp",maxlength:"4",placeholder:"••••",value:S.pin,
+    style:{textAlign:"center",fontSize:"28px",letterSpacing:"10px",width:"160px"}});
+  inp.addEventListener("input",e=>{S.pin=e.target.value;});
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")tryUnlock();});
+
+  return h("div",{cls:"page"},
+    header("Management Access", ()=>set({view:"home"})),
+    h("div",{cls:"pinbox"},
+      h("div",{style:{fontSize:"48px",marginBottom:"14px"}},"🔐"),
+      h("div",{style:{fontSize:"18px",color:"#a78bfa",marginBottom:"8px",fontWeight:"800"}},"Admin / Management Login"),
+      h("div",{style:{fontSize:"13px",color:"#8888aa",marginBottom:"22px",fontWeight:"600"}},"Enter your 4-digit PIN"),
+      inp,
+      S.pinErr ? h("div",{style:{color:"#f87171",fontSize:"13px",marginTop:"10px",fontWeight:"700"}},"❌ Wrong PIN. Try again.") : null,
+      h("div",{style:{marginTop:"18px"}},
+        h("button",{cls:"btn",onClick:tryUnlock},"Enter  →")
+      ),
+      h("div",{style:{fontSize:"11px",color:"#4444aa",marginTop:"22px",fontFamily:"'JetBrains Mono',monospace"}},"Default PIN: 1234  (change ADMIN_PIN in code)")
+    )
+  );
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║           VIEW: ADMIN DASHBOARD                         ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function pageAdmin(){
+  if(S.sel) return pageDetail();
+
+  const cs = S.complaints;
+  const filtered = cs
+    .filter(c=>S.aFilter==="all"||c.status===S.aFilter||c.priority===S.aFilter)
+    .filter(c=>!S.aSearch||c.id.includes(S.aSearch)||(c.location||"").toLowerCase().includes(S.aSearch.toLowerCase())||(c.name||"").toLowerCase().includes(S.aSearch.toLowerCase())||(c.category||"").toLowerCase().includes(S.aSearch.toLowerCase()));
+
+  const counts = {
+    total:cs.length,
+    open:cs.filter(c=>c.status==="open").length,
+    prog:cs.filter(c=>c.status==="in_progress").length,
+    res:cs.filter(c=>c.status==="resolved").length
+  };
+
+  const srch = h("input",{cls:"inp",type:"text",placeholder:"🔍 Search ID, name, location, category...",value:S.aSearch,style:{marginBottom:"12px"}});
+  srch.addEventListener("input",e=>set({aSearch:e.target.value}));
+
+  const filters = h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"16px",overflowX:"auto",paddingBottom:"4px"}},
+    ...["all","open","in_progress","resolved","critical","high"].map(f=>
+      h("button",{cls:"fbtn"+(S.aFilter===f?" on":""),onClick:()=>set({aFilter:f})},f.replace("_"," "))
+    )
+  );
+
+  return h("div",{cls:"page"},
+    h("div",{cls:"float-window",style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",padding:"16px 20px"}},
+      h("div",{},
+        h("div",{style:{fontSize:"11px",color:"#8888aa",letterSpacing:"3px",fontWeight:"700"}},"MANAGEMENT"),
+        h("div",{style:{fontSize:"22px",fontWeight:"800",color:"#a78bfa"}},"All Complaints")
+      ),
+      h("div",{style:{display:"flex",gap:"10px",alignItems:"center"}},
+        h("span",{cls:"live-badge"},h("span",{cls:"live-dot"}),"LIVE"),
+        notifBell(),
+        h("button",{cls:"btn-logout",onClick:()=>set({adminOK:false,view:"home"})},"🚪 Logout")
+      )
+    ),
+
+    h("div",{cls:"g4"},
+      statBox("Total",  counts.total,"#a78bfa"),
+      statBox("Open",   counts.open, "#f87171"),
+      statBox("In Prog",counts.prog, "#fbbf24"),
+      statBox("Resolved",counts.res,"#4ade80")
+    ),
+
+    h("div",{cls:"float-window"},srch,filters),
+
+    filtered.length===0
+      ? h("div",{cls:"empty"},"No complaints found.")
+      : h("div",{},...filtered.map(c=>complaintCard(c,true,()=>{
+          set({sel:c, dStatus:c.status, dDept:c.assignDept||"", dReply:""});
+        })))
+  );
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║           VIEW: COMPLAINT DETAIL                        ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function pageDetail(){
+  const c   = S.sel;
+  const p   = PRIORITY[c.priority]||PRIORITY.medium;
+  const s   = STATUS[c.status]||STATUS.open;
+  const cat = CATEGORIES.find(x=>x.id===c.category);
+
+  const stSel = h("select",{cls:"inp"});
+  Object.entries(STATUS).forEach(([k,v])=>{
+    const o = h("option",{value:k},v.icon+" "+v.label);
+    if(S.dStatus===k) o.selected=true;
+    stSel.appendChild(o);
+  });
+  stSel.addEventListener("change",e=>{S.dStatus=e.target.value;});
+
+  const dpSel = h("select",{cls:"inp"},h("option",{value:""},"Select department…"));
+  DEPARTMENTS.forEach(d=>{
+    const o = h("option",{value:d},d);
+    if(S.dDept===d) o.selected=true;
+    dpSel.appendChild(o);
+  });
+  dpSel.addEventListener("change",e=>{S.dDept=e.target.value;});
+
+  const repTA = h("textarea",{cls:"inp",rows:"3",
+    placeholder:"Type your reply to the student / staff…",
+    style:{resize:"vertical",marginBottom:"10px"}},S.dReply);
+  repTA.addEventListener("input",e=>{S.dReply=e.target.value;});
+
+  // Use docId for Firebase (Firestore document ID) or fallback to id
+  const docId = c.docId || c.id;
+
+  return h("div",{cls:"page"},
+    header(c.id, ()=>set({sel:null})),
+
+    h("div",{cls:"float-window",style:{borderLeft:`5px solid ${p.color}`}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"10px",marginBottom:"14px"}},
+        pill(p.label+" Priority",p.color,p.bg,true),
+        pill(s.icon+" "+s.label,s.color,s.color+"22",true)
+      ),
+      h("div",{style:{fontSize:"16px",color:"#c8c8ee",marginTop:"14px",lineHeight:"1.7",fontWeight:"600"}},c.summary||c.description),
+      h("div",{style:{marginTop:"16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}},
+        irow("Reporter",(c.role?`[${c.role}] `:"")+(c.name||"Anonymous")),
+        irow("Contact",c.contact||"—"),
+        irow("Location",c.location),
+        irow("Category",cat?cat.icon+" "+cat.label:c.category),
+        irow("Submitted",c.submittedAt),
+        irow("Updated",c.updatedAt)
+      ),
+      c.safetyNote
+        ? h("div",{style:{marginTop:"14px",padding:"12px 16px",background:"rgba(248,113,113,0.1)",border:"2px solid #f87171",borderRadius:"10px",fontSize:"13px",color:"#f87171",fontWeight:"700"}},"⚠️ "+c.safetyNote)
+        : null,
+      h("div",{style:{marginTop:"14px",padding:"14px 16px",background:"rgba(124,58,237,0.1)",borderRadius:"10px",fontSize:"13px",color:"#c8c8ee",borderLeft:"4px solid #7c3aed",fontWeight:"600"}},
+        h("strong",{style:{color:"#a78bfa"}},"Full Description:"),
+        h("br",{}),
+        c.description
+      )
+    ),
+
+    h("div",{cls:"float-window"},
+      sectionLabel("UPDATE STATUS & ASSIGNMENT"),
+      h("div",{cls:"g2",style:{marginBottom:"14px"}},
+        h("div",{},h("label",{cls:"lbl"},"STATUS"),stSel),
+        h("div",{},h("label",{cls:"lbl"},"DEPARTMENT"),dpSel)
+      ),
+      h("button",{cls:"btn",onClick:async()=>{
+        try{
+          const now = nowStr();
+          await fbUpdate(docId, {status:S.dStatus, assignDept:S.dDept, updatedAt:now});
+          S.sel = {...c, status:S.dStatus, assignDept:S.dDept, updatedAt:now};
+          toast("✅ Updated! All phones will see this change now.");
+          draw();
+        } catch(e){ toast("❌ Update failed. Check internet.","err"); }
+      }},"💾 Save Changes — Syncs to All Devices")
+    ),
+
+    h("div",{cls:"float-window"},
+      sectionLabel("REPLIES TO STUDENT / STAFF"),
+      (c.replies||[]).length===0
+        ? h("div",{style:{fontSize:"13px",color:"#8888aa",marginBottom:"12px",fontWeight:"600"}},"No replies yet.")
+        : h("div",{},...(c.replies||[]).map(r=>
+            h("div",{cls:"reply"},
+              h("div",{style:{fontSize:"12px",color:"#8888aa",marginBottom:"5px",fontWeight:"700"}},r.by+" · "+r.at),
+              h("div",{style:{fontSize:"14px",color:"#c8c8ee",fontWeight:"600"}},r.text)
+            )
+          )),
+      repTA,
+      h("button",{cls:"btn",style:{background:"linear-gradient(135deg,#065F46,#047857)"},onClick:async()=>{
+        if(!S.dReply.trim()) return;
+        const nr = {text:S.dReply.trim(), at:nowStr(), by:"Management"};
+        try{
+          await fbUpdate(docId, {replies: window._arrayUnion(nr), updatedAt:nowStr()});
+          S.sel = {...c, replies:[...(c.replies||[]),nr]};
+          S.dReply = "";
+          toast("✅ Reply sent! Student can track and see it now.");
+          draw();
+        } catch(e){ toast("❌ Failed to send. Check internet.","err"); }
+      }},"📤 Send Reply — Visible to All Devices")
+    )
+  );
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║                TOAST ELEMENT                            ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function toastEl(){
+  if(!S.toast) return null;
+  const ok = S.toast.type==="ok";
+  return h("div",{cls:"toast",style:{
+    background: ok?"rgba(5,46,22,0.95)":"rgba(69,10,10,0.95)",
+    border: `2px solid ${ok?"#22c55e":"#ef4444"}`,
+    color:"#fff"
+  }},(ok?"✅ ":"❌ ")+S.toast.msg);
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║                MAIN DRAW                                ║
+// ╚══════════════════════════════════════════════════════════╝
+
+function draw(){
+  const root = document.getElementById("root");
+  root.innerHTML = "";
+
+  let page;
+  switch(S.view){
+    case "home":    page = pageHome();    break;
+    case "submit":  page = pageSubmit();  break;
+    case "track":   page = pageTrack();   break;
+    case "pingate": page = pagePinGate(); break;
+    case "admin":   page = S.adminOK ? pageAdmin() : pagePinGate(); break;
+    default:        page = pageHome();
+  }
+  root.appendChild(page);
+
+  const fab = fabButtons();
+  if(fab) root.appendChild(fab);
+
+  const t = toastEl();
+  if(t) root.appendChild(t);
+
+  const np = notifPanel();
+  if(np) root.appendChild(np);
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║            PWA INSTALL SUPPORT                          ║
+// ╚══════════════════════════════════════════════════════════╝
+
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault(); S.pwaPrompt=e; draw();
+});
+window.addEventListener("appinstalled",()=>{
+  S.pwaPrompt=null; draw();
+});
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║                   BOOT                                  ║
+// ╚══════════════════════════════════════════════════════════╝
+
+document.addEventListener("fb-ready",()=>{
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("root").style.display = "block";
+  startListener(); // Real-time sync — all phones update instantly
+  draw();
+});
+
+// Fallback if Firebase isn't configured yet
+setTimeout(()=>{
+  if(!window._fbReady){
+    document.getElementById("loading").innerHTML = `
+      <div style="font-size:48px">⚠️</div>
+      <div style="color:#f59e0b;font-size:16px;font-weight:800;margin-top:16px;letter-spacing:2px">FIREBASE NOT CONFIGURED</div>
+      <div style="color:#6666aa;font-size:13px;margin-top:10px;text-align:center;padding:0 32px;line-height:1.7;font-weight:600">
+        Open this file in a text editor and paste your Firebase config at the top of the &lt;script type="module"&gt; block.<br><br>
+        See console.firebase.google.com → Project Settings → Web App for your config.
+      </div>
+    `;
+  }
+}, 8000);
+</script>
+</body>
+</html>
