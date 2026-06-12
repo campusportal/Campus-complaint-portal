@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="theme-color" content="#0A0F1E"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Campus CP"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <title>Campus Complaint Portal</title>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onload="initSupabase()"></script>
+  <script>
+    function initSupabase(){
+      const SUPABASE_URL = "https://lpbuymaznmsefnwccpnt.supabase.co";
+      const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwYnV5bWF6bm1zZWZud2NjcG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNDc2NjEsImV4cCI6MjA5NjgyMzY2MX0.Kjxw1TXjVj0uNpPUYuPo8dAET7e_TNBrEwMkp0vHOL4";
+      window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      window._sbReady = true;
+      document.dispatchEvent(new Event("fb-ready"));
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+    :root {
+      --bg:      #0A0F1E;
+      --card:    #111827;
+      --card2:   #0D1520;
+      --border:  #1E3352;
+      --blue:    #2563EB;
+      --indigo:  #4F46E5;
+      --text:    #E2E8F0;
+      --muted:   #64748B;
+      --accent:  #93C5FD;
+      --red:     #EF4444;
+      --yellow:  #F59E0B;
+      --green:   #10B981;
+      --orange:  #F97316;
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:'DM Sans', sans-serif;
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+    input,select,textarea,button{ font-family:'DM Sans',sans-serif; outline:none; }
+    input::placeholder,textarea::placeholder{ color:var(--muted); }
+    select option{ background:var(--card); color:var(--text); }
+
+    /* ── LAYOUT ── */
+    .page{ max-width:680px; margin:0 auto; padding:20px 16px 90px; }
+
+    /* ── INPUTS ── */
+    .inp{
+      width:100%; padding:12px 14px;
+      background:var(--card2); border:1.5px solid var(--border);
+      border-radius:10px; color:var(--text); font-size:14px;
+      font-family:'DM Sans',sans-serif; transition:border-color .2s;
+    }
+    .inp:focus{ border-color:var(--blue); }
+    textarea.inp{ resize:vertical; line-height:1.6; }
+
+    /* ── BUTTONS ── */
+    .btn{
+      padding:12px 24px; border-radius:10px; border:none;
+      background:linear-gradient(135deg,var(--blue),var(--indigo));
+      color:#fff; font-size:14px; font-weight:600;
+      cursor:pointer; font-family:inherit; letter-spacing:.3px;
+      transition:opacity .2s, transform .1s;
+    }
+    .btn:active{ transform:scale(.98); }
+    .btn-out{
+      padding:12px 24px; border-radius:10px;
+      border:1.5px solid var(--border); background:var(--card2);
+      color:var(--accent); font-size:14px; font-weight:600;
+      cursor:pointer; font-family:inherit;
+    }
+    .btn-full{
+      width:100%; padding:16px; border-radius:12px; border:none;
+      background:linear-gradient(135deg,var(--blue),var(--indigo));
+      color:#fff; font-size:15px; font-weight:700;
+      cursor:pointer; font-family:inherit; margin-top:10px;
+      transition:opacity .2s;
+    }
+    .btn-full:disabled{ opacity:.4; cursor:not-allowed; }
+    .btn-back{
+      padding:10px 16px; border-radius:10px;
+      background:var(--card2); border:1.5px solid var(--border);
+      color:var(--accent); cursor:pointer; font-size:18px; font-family:inherit;
+    }
+
+    /* ── LABELS ── */
+    .lbl{
+      display:block; font-size:10px; color:var(--muted);
+      letter-spacing:2px; text-transform:uppercase; margin-bottom:7px;
+      font-family:'Space Mono',monospace;
+    }
+    .sec{
+      font-size:10px; color:var(--muted); letter-spacing:2px;
+      text-transform:uppercase; margin-bottom:12px; padding-bottom:8px;
+      border-bottom:1px solid var(--border); font-family:'Space Mono',monospace;
+    }
+
+    /* ── CARDS ── */
+    .card{
+      background:var(--card); border:1px solid var(--border);
+      border-radius:14px; padding:16px; margin-bottom:12px;
+    }
+    .acard{
+      background:var(--card2); border:1px solid var(--border);
+      border-radius:14px; padding:16px; margin-bottom:12px;
+    }
+
+    /* ── GRIDS ── */
+    .g2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .g3{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+    .g4{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; }
+    .gcards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+
+    /* ── STAT BOX ── */
+    .sbox{
+      background:var(--card); border:1.5px solid; border-radius:12px;
+      padding:16px 10px; text-align:center;
+    }
+
+    /* ── HOME CARD ── */
+    .hcard{
+      background:var(--card); border:1.5px solid; border-radius:16px;
+      padding:26px 16px; cursor:pointer; text-align:center;
+      transition:all .2s; font-family:inherit; width:100%;
+    }
+    .hcard:hover{ transform:translateY(-2px); }
+
+    /* ── ROLE / CAT BUTTONS ── */
+    .rbtn{
+      padding:16px 8px; border-radius:12px; border:1.5px solid var(--border);
+      cursor:pointer; display:flex; flex-direction:column;
+      align-items:center; gap:8px; font-family:inherit;
+      background:var(--card2); transition:all .2s; width:100%;
+      color:var(--muted);
+    }
+    .cbtn{
+      padding:14px 6px; border-radius:12px; border:1.5px solid var(--border);
+      cursor:pointer; text-align:center; font-family:inherit;
+      background:var(--card2); color:var(--muted); transition:all .2s;
+    }
+    .ubtn{
+      padding:9px 16px; border-radius:20px; border:1.5px solid var(--border);
+      font-family:inherit; cursor:pointer; font-size:12px;
+      text-transform:uppercase; letter-spacing:1px;
+      background:var(--card2); color:var(--muted); transition:all .2s;
+    }
+    .fbtn{
+      padding:8px 16px; border-radius:20px; font-size:11px; cursor:pointer;
+      font-family:inherit; text-transform:uppercase; letter-spacing:1px;
+      border:1.5px solid var(--border); background:var(--card2); color:var(--muted);
+      transition:all .2s; white-space:nowrap;
+    }
+    .fbtn.on{ border-color:var(--accent); background:#2563EB22; color:var(--accent); }
+
+    /* ── COMPLAINT CARD ── */
+    .ccard{
+      background:var(--card); border-radius:14px; padding:16px;
+      margin-bottom:12px; border-left:4px solid var(--blue);
+      border:1px solid var(--border); cursor:pointer; transition:all .2s;
+    }
+    .ccard:hover{ border-color:#2563EB88; transform:translateY(-1px); }
+
+    /* ── PILL ── */
+    .pill{ display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; border:1px solid; }
+    .pill2{ display:inline-block; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid; }
+
+    /* ── SUCCESS ── */
+    .scard{
+      background:var(--card); border:1.5px solid #2563EB55;
+      border-radius:18px; padding:32px 20px; text-align:center; margin-top:20px;
+    }
+    .tbadge{
+      display:inline-block; padding:14px 30px;
+      background:#2563EB22; border:2px solid var(--blue);
+      border-radius:14px; font-size:24px; font-weight:800;
+      color:var(--accent); letter-spacing:3px;
+      font-family:'Space Mono',monospace;
+    }
+
+    /* ── PIN BOX ── */
+    .pinbox{
+      background:var(--card); border:1px solid var(--border);
+      border-radius:18px; padding:34px 20px; text-align:center; margin-top:20px;
+    }
+
+    /* ── EMPTY ── */
+    .empty{
+      text-align:center; padding:50px 20px; color:var(--muted);
+      font-size:14px; border:1px dashed var(--border); border-radius:14px;
+    }
+
+    /* ── REPLY ── */
+    .reply-item{
+      padding:12px 14px; background:var(--bg); border-radius:10px;
+      margin-bottom:8px; border-left:3px solid var(--blue);
+    }
+
+    /* ── TOAST ── */
+    .toast{
+      position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+      padding:14px 28px; border-radius:30px; font-size:14px; font-weight:600;
+      z-index:9999; white-space:nowrap; box-shadow:0 8px 40px #00000088;
+      pointer-events:none; animation:fin .3s ease;
+    }
+
+    /* ── LOADING ── */
+    .loading-screen{
+      position:fixed; inset:0; background:var(--bg);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:16px; z-index:999;
+    }
+    .spinner{
+      width:44px; height:44px; border:3px solid var(--border);
+      border-top-color:var(--blue); border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+
+    /* ── INFO ROW ── */
+    .irow{ background:var(--bg); border-radius:8px; padding:10px 12px; }
+
+    /* ── REALTIME BADGE ── */
+    .live-badge{
+      display:inline-flex; align-items:center; gap:6px;
+      background:#10B98122; border:1px solid #10B98155;
+      padding:4px 12px; border-radius:20px; font-size:11px; color:#10B981;
+    }
+    .live-dot{
+      width:7px; height:7px; background:#10B981;
+      border-radius:50%; animation:pulse 2s infinite;
+    }
+
+    @keyframes fin{ from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    @keyframes spin{ from{transform:rotate(0)}to{transform:rotate(360deg)} }
+    @keyframes pulse{ 0%,100%{opacity:1}50%{opacity:.4} }
+    @keyframes fadeIn{ from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+    .fadein{ animation:fadeIn .3s ease; }
+  </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loading">
+  <div style="font-size:52px">🏛️</div>
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace">CONNECTING...</div>
+</div>
+
+<div id="root" style="display:none"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════════
+const LOCATIONS = [
+  "Kaveri Block","Netravathi Block","Silver Jubilee Girls Hostel",
+  "Tunga Block","Krishna Block","Badra Block",Cafeteria","Admin Block",
+  "CV Raman Block","Silver Jubilee 1","Silver Jubilee 2",
+  "EEE Block","Mechanical Block","Millenium Block"
+];
+const CATEGORIES = [
+  {id:"electrical",    label:"Electrical",    icon:"⚡",color:"#F59E0B"},
+  {id:"plumbing",      label:"Plumbing",      icon:"🚿",color:"#38BDF8"},
+  {id:"infrastructure",label:"Infrastructure",icon:"🏗️",color:"#F97316"},
+  {id:"cleanliness",   label:"Cleanliness",   icon:"🧹",color:"#10B981"},
+  {id:"safety",        label:"Safety",        icon:"🛡️",color:"#EF4444"},
+  {id:"network",       label:"Network/IT",    icon:"📡",color:"#A78BFA"},
+  {id:"hostel",        label:"Hostel",        icon:"🏠",color:"#67E8F9"},
+  {id:"other",         label:"Other",         icon:"📋",color:"#94A3B8"}
+];
+const ROLES=[
+  {id:"student",label:"Student",icon:"🎓"},
+  {id:"staff",  label:"Staff / Faculty",icon:"👨‍🏫"},
+  {id:"warden", label:"Hostel Warden",icon:"🏠"}
+];
+const DEPARTMENTS=["Electrical Dept","Civil / Maintenance","Housekeeping","IT Department","Hostel Management","Admin Office","Security"];
+const PRIORITY={
+  low:     {label:"Low",     color:"#10B981",bg:"#10B98122"},
+  medium:  {label:"Medium",  color:"#F59E0B",bg:"#F59E0B22"},
+  high:    {label:"High",    color:"#F97316",bg:"#F9731622"},
+  critical:{label:"Critical",color:"#EF4444",bg:"#EF444422"}
+};
+const STATUS={
+  open:       {label:"Open",       color:"#EF4444",icon:"🔴"},
+  in_progress:{label:"In Progress",color:"#F59E0B",icon:"🟡"},
+  resolved:   {label:"Resolved",   color:"#10B981",icon:"🟢"},
+  closed:     {label:"Closed",     color:"#94A3B8",icon:"⚫"}
+};
+const ADMIN_PIN="1234"; // ← Change this!
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+const S={
+  view:"home", complaints:[],
+  adminOK:false,
+  role:"",name:"",contact:"",location:"",category:"",desc:"",urgency:"",
+  submitting:false, ticket:null,
+  trackQ:"",
+  pin:"",pinErr:false,
+  aFilter:"all", aSearch:"",
+  sel:null, dStatus:"",dDept:"",dReply:"",
+  toast:null,toastT:null,
+  unsubscribe:null  // Firebase realtime listener
+};
+
+function set(patch){ Object.assign(S,patch); draw(); }
+
+// ════════════════════════════════════════════════════════════
+//  FIREBASE OPERATIONS
+// ════════════════════════════════════════════════════════════
+
+// Start realtime listener — ALL phones see updates instantly
+function startListener(){
+  try{
+    window._supabase
+      .channel("complaints-channel")
+      .on("postgres_changes",{event:"*",schema:"public",table:"complaints"},()=>{
+        loadAllComplaints();
+      })
+      .subscribe();
+  }catch(e){ console.warn("Supabase listener error",e); }
+  // Backup: poll every 10 seconds in case realtime doesn't fire on mobile
+  setInterval(loadAllComplaints, 10000);
+  loadAllComplaints();
+}
+
+async function loadAllComplaints(){
+  try{
+    const {data,error} = await window._supabase
+      .from("complaints")
+      .select("*")
+      .order("submitted_at_ms",{ascending:false});
+    if(!error && data){
+      S.complaints = data.map(r=>({
+        id: "CPR-"+String(r.id).slice(-4).padStart(4,"0"),
+        docId: r.id,
+        role: r.role, name: r.name, contact: r.contact,
+        location: r.location, category: r.category,
+        description: r.description, urgency: r.urgency,
+        priority: r.priority, summary: r.summary,
+        assignDept: r.assign_dept, estimatedTime: r.estimated_time,
+        safetyNote: r.safety_note, status: r.status,
+        submittedAt: r.submitted_at, updatedAt: r.updated_at,
+        replies: r.replies || []
+      }));
+      draw();
+    }
+  }catch(e){ console.warn("Load error",e); }
+}
+
+async function fbAdd(data){
+  const {data:row,error} = await window._supabase.from("complaints").insert([{
+    role: data.role, name: data.name, contact: data.contact,
+    location: data.location, category: data.category,
+    description: data.description, urgency: data.urgency,
+    priority: data.priority, summary: data.summary,
+    assign_dept: data.assignDept, estimated_time: data.estimatedTime,
+    safety_note: data.safetyNote, status: "open",
+    submitted_at: data.submittedAt, updated_at: data.updatedAt,
+    submitted_at_ms: data.submittedAtMs, replies: []
+  }]).select();
+  if(error) throw error;
+  return row[0];
+}
+
+async function fbUpdate(docId, data){
+  const update = {};
+  if(data.status)      update.status      = data.status;
+  if(data.assignDept)  update.assign_dept  = data.assignDept;
+  if(data.updatedAt)   update.updated_at   = data.updatedAt;
+  if(data.replies)     update.replies      = data.replies;
+  const {error} = await window._supabase.from("complaints").update(update).eq("id",docId);
+  if(error) throw error;
+}
+
+// ════════════════════════════════════════════════════════════
+//  AI ANALYSIS
+// ════════════════════════════════════════════════════════════
+async function callAI(form){
+  const fallback={priority:"medium",summary:form.desc.slice(0,80),assignDept:"Admin Office",estimatedTime:"2-3 days",safetyNote:""};
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",max_tokens:400,
+        messages:[{role:"user",content:
+          `Campus complaint. JSON only, no markdown.\nCategory:${form.category}, Location:${form.location}, Description:${form.desc}, Urgency:${form.urgency||"not stated"}\nFields: priority(low/medium/high/critical), summary(1 sentence), assignDept(one of:Electrical Dept,Civil / Maintenance,Housekeeping,IT Department,Hostel Management,Admin Office,Security), estimatedTime(e.g."1-2 days"), safetyNote(or "")`
+        }]
+      })
+    });
+    const d=await res.json();
+    const txt=(d.content||[]).map(i=>i.text||"").join("");
+    return {...fallback,...JSON.parse(txt.replace(/```json|```/g,"").trim())};
+  }catch(e){return fallback;}
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════
+function toast(msg,type="ok"){
+  if(S.toastT)clearTimeout(S.toastT);
+  const t=setTimeout(()=>set({toast:null,toastT:null}),3000);
+  set({toast:{msg,type},toastT:t});
+}
+
+// ════════════════════════════════════════════════════════════
+//  DOM BUILDER
+// ════════════════════════════════════════════════════════════
+function h(tag,attrs,...kids){
+  const e=document.createElement(tag);
+  for(const[k,v]of Object.entries(attrs||{})){
+    if(k==="cls")e.className=v;
+    else if(k==="style"&&typeof v==="object")Object.assign(e.style,v);
+    else if(k.startsWith("on"))e.addEventListener(k.slice(2).toLowerCase(),v);
+    else e.setAttribute(k,v);
+  }
+  for(const k of kids.flat(9)){
+    if(k==null||k===false)continue;
+    e.appendChild(typeof k==="string"||typeof k==="number"?document.createTextNode(String(k)):k);
+  }
+  return e;
+}
+
+function pill(label,color,bg,big){
+  return h("span",{cls:big?"pill2":"pill",style:{color,borderColor:color,background:bg}},label);
+}
+function sbox(label,value,color){
+  return h("div",{cls:"sbox",style:{borderColor:color+"55"}},
+    h("div",{style:{fontSize:"28px",fontWeight:"800",color,fontFamily:"'Space Mono',monospace"}},String(value)),
+    h("div",{style:{fontSize:"10px",color:"var(--muted)",letterSpacing:"2px",marginTop:"2px",fontFamily:"'Space Mono',monospace"}},label.toUpperCase())
+  );
+}
+function irow(label,value,color){
+  return h("div",{cls:"irow"},
+    h("div",{style:{fontSize:"9px",color:"var(--muted)",letterSpacing:"2px",marginBottom:"3px",fontFamily:"'Space Mono',monospace"}},label.toUpperCase()),
+    h("div",{style:{fontSize:"13px",color:color||"var(--accent)"}},value||"—")
+  );
+}
+function hdr(title,backFn){
+  return h("div",{style:{display:"flex",alignItems:"center",gap:"12px",marginBottom:"22px"}},
+    h("button",{cls:"btn-back",onClick:backFn},"←"),
+    h("div",{style:{fontSize:"20px",fontWeight:"700",color:"var(--accent)",fontFamily:"'Space Mono',monospace"}},title)
+  );
+}
+function sec(txt){ return h("div",{cls:"sec"},txt); }
+
+// Complaint card
+function ccard(c,isAdmin,onClick){
+  const p=PRIORITY[c.priority]||PRIORITY.medium;
+  const s=STATUS[c.status]||STATUS.open;
+  const cat=CATEGORIES.find(x=>x.id===c.category);
+  const txt=(c.summary||c.description||"").slice(0,110);
+  return h("div",{cls:"ccard fadein",style:{borderLeftColor:p.color},onClick:onClick||null},
+    h("div",{style:{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"6px",marginBottom:"10px"}},
+      h("div",{style:{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}},
+        h("span",{style:{fontSize:"18px"}},cat?.icon||"📋"),
+        h("span",{style:{fontSize:"13px",fontWeight:"700",color:"var(--accent)",letterSpacing:"1px",fontFamily:"'Space Mono',monospace"}},c.id),
+        pill(p.label,p.color,p.bg),
+        pill(s.icon+" "+s.label,s.color,s.color+"22")
+      ),
+      h("span",{style:{fontSize:"11px",color:"var(--muted)"}},c.submittedAt)
+    ),
+    h("div",{style:{fontSize:"14px",color:"var(--text)",marginBottom:"10px",lineHeight:"1.6"}},
+      txt+(txt.length<(c.summary||c.description||"").length?"…":"")
+    ),
+    h("div",{style:{display:"flex",gap:"14px",fontSize:"12px",color:"var(--muted)",flexWrap:"wrap"}},
+      h("span",{},"📍 "+c.location),
+      isAdmin?h("span",{},"👤 "+(c.name||"Anon")+" ["+(c.role||"—")+"]"):null,
+      c.assignDept?h("span",{},"🏢 "+c.assignDept):null,
+      (c.replies?.length>0)?h("span",{style:{color:"var(--green)"}},"💬 "+c.replies.length+" repl"+(c.replies.length>1?"ies":"y")):null
+    ),
+    onClick?h("div",{style:{marginTop:"10px",fontSize:"11px",color:"var(--blue)",letterSpacing:"1px",fontFamily:"'Space Mono',monospace"}},"TAP TO MANAGE →"):null
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+//  VIEW: HOME
+// ════════════════════════════════════════════════════════════
+function pageHome(){
+  const d=S.complaints;
+  const open=d.filter(c=>c.status==="open").length;
+  const prog=d.filter(c=>c.status==="in_progress").length;
+  const done=d.filter(c=>c.status==="resolved").length;
+
+  function navCard(icon,title,desc,color,view){
+    const c=h("button",{cls:"hcard",style:{borderColor:color+"55"},onClick:()=>set({view})},
+      h("div",{style:{fontSize:"36px",marginBottom:"12px"}},icon),
+      h("div",{style:{fontSize:"17px",fontWeight:"700",color:"var(--text)",marginBottom:"8px"}},"title"),
+      h("div",{style:{fontSize:"13px",color:"var(--muted)",lineHeight:"1.5"}},desc)
+    );
+    // fix title text
+    c.querySelector("div:nth-child(2)").textContent=title;
+    c.addEventListener("mouseenter",()=>{c.style.borderColor=color;c.style.boxShadow=`0 0 24px ${color}33`;});
+    c.addEventListener("mouseleave",()=>{c.style.borderColor=color+"55";c.style.boxShadow="none";});
+    return c;
+  }
+
+  return h("div",{cls:"page"},
+    // Hero
+    h("div",{style:{textAlign:"center",padding:"32px 0 24px"}},
+      h("div",{style:{fontSize:"60px",marginBottom:"14px"}},"🏛️"),
+      h("h1",{style:{fontSize:"24px",fontWeight:"800",color:"var(--accent)",margin:"0 0 10px",fontFamily:"'Space Mono',monospace",letterSpacing:"1px"}},
+        "Campus Complaint Portal"),
+      h("p",{style:{fontSize:"13px",color:"var(--muted)",letterSpacing:"2px"}},
+        "Report · Track · Resolve"),
+      h("div",{style:{marginTop:"12px",display:"flex",justifyContent:"center",gap:"10px",alignItems:"center"}},
+        h("span",{cls:"live-badge"},
+          h("span",{cls:"live-dot"}),
+          "LIVE — All phones synced"
+        ),
+        h("button",{cls:"btn-out",style:{padding:"6px 14px",fontSize:"12px"},onClick:()=>{loadAllComplaints();toast("🔄 Refreshed!");}},
+          "🔄 Refresh"
+        )
+      )
+    ),
+
+    // Stats
+    h("div",{cls:"g3"},
+      sbox("Open",open,"#EF4444"),
+      sbox("In Progress",prog,"#F59E0B"),
+      sbox("Resolved",done,"#10B981")
+    ),
+
+    // Nav cards
+    h("div",{cls:"gcards"},
+      navCard("📝","Submit Complaint",   "Report a problem on campus",        "#2563EB","submit"),
+      navCard("🔍","Track Complaint",    "Check your ticket status",          "#7C3AED","track"),
+      navCard("🛡️","Admin / Management","View & manage all complaints",       "#065F46","pingate")
+    )
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+//  VIEW: SUBMIT
+// ════════════════════════════════════════════════════════════
+function pageSubmit(){
+  if(S.ticket){
+    const t=S.ticket;
+    const p=PRIORITY[t.priority]||PRIORITY.medium;
+    return h("div",{cls:"page"},
+      h("div",{cls:"scard"},
+        h("div",{style:{fontSize:"56px",marginBottom:"12px"}},"✅"),
+        h("div",{style:{fontSize:"24px",fontWeight:"700",color:"var(--green)",marginBottom:"8px"}})  ,
+        h("div",{style:{fontSize:"14px",color:"var(--muted)",marginBottom:"22px"}},"Save your Ticket ID to track status"),
+        h("div",{cls:"tbadge"},t.id),
+        h("div",{style:{margin:"20px 0",display:"grid",gap:"10px"}},
+          irow("Priority",p.label,p.color),
+          irow("Assigned To",t.assignDept),
+          irow("Est. Time",t.estimatedTime),
+          t.safetyNote?irow("⚠️ Safety",t.safetyNote,"#EF4444"):null
+        ),
+        h("div",{style:{fontSize:"13px",color:"var(--green)",marginBottom:"16px",padding:"10px",background:"#10B98122",borderRadius:"10px"}},
+          "✅ Complaint saved to cloud! Management can see it now."
+        ),
+        h("div",{style:{display:"flex",gap:"12px",justifyContent:"center"}},
+          h("button",{cls:"btn-out",onClick:()=>set({ticket:null,role:"",name:"",contact:"",location:"",category:"",desc:"",urgency:""})},"Submit Another"),
+          h("button",{cls:"btn",onClick:()=>set({view:"home",ticket:null})},"🏠 Home")
+        )
+      )
+    );
+  }
+
+  const valid=S.role&&S.name&&S.location&&S.category&&S.desc.trim().length>10;
+
+  const nameInp=h("input",{cls:"inp",type:"text",placeholder:"Your full name",value:S.name});
+  nameInp.addEventListener("input",e=>{S.name=e.target.value;});
+  const ctcInp=h("input",{cls:"inp",type:"text",placeholder:"Phone / Email (optional)",value:S.contact});
+  ctcInp.addEventListener("input",e=>{S.contact=e.target.value;});
+
+  const locSel=h("select",{cls:"inp"},
+    h("option",{value:""},"Select location..."),
+    ...LOCATIONS.map(l=>{const o=h("option",{value:l},l);if(S.location===l)o.selected=true;return o;})
+  );
+  locSel.addEventListener("change",e=>{S.location=e.target.value;draw();});
+
+  const descTA=h("textarea",{cls:"inp",rows:"4",placeholder:"Explain clearly... (min. 10 characters)"},S.desc);
+  descTA.addEventListener("input",e=>{S.desc=e.target.value;});
+
+  const success=h("div",{cls:"scard"});
+  success.querySelector("div:nth-child(2)")?.remove?.();
+
+  const submitLbl = S.submitting ? "⚙️ Saving to cloud..." : "🚀  Submit Complaint";
+
+  return h("div",{cls:"page"},
+    hdr("Submit Complaint",()=>set({view:"home"})),
+
+    h("div",{style:{marginBottom:"20px"}},
+      sec("WHO ARE YOU?"),
+      h("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}},
+        ...ROLES.map(r=>h("button",{
+          cls:"rbtn",
+          style:{borderColor:S.role===r.id?"#2563EB":"var(--border)",background:S.role===r.id?"#2563EB22":"var(--card2)",color:S.role===r.id?"var(--accent)":"var(--muted)"},
+          onClick:()=>{S.role=r.id;draw();}
+        },
+          h("span",{style:{fontSize:"26px"}},r.icon),
+          h("span",{style:{fontSize:"13px"}},r.label)
+        ))
+      )
+    ),
+
+    h("div",{style:{marginBottom:"20px"}},
+      sec("YOUR DETAILS"),
+      h("div",{cls:"g2"},
+        h("div",{},h("label",{cls:"lbl"},"NAME *"),nameInp),
+        h("div",{},h("label",{cls:"lbl"},"CONTACT (OPTIONAL)"),ctcInp)
+      )
+    ),
+
+    h("div",{style:{marginBottom:"20px"}},
+      sec("ISSUE DETAILS"),
+      h("div",{},h("label",{cls:"lbl"},"LOCATION *"),locSel),
+      h("div",{style:{marginTop:"12px"}},
+        h("label",{cls:"lbl"},"CATEGORY *"),
+        h("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px"}},
+          ...CATEGORIES.map(c=>{
+            const active=S.category===c.id;
+            return h("button",{cls:"cbtn",
+              style:{borderColor:active?c.color:"var(--border)",background:active?c.color+"22":"var(--card2)",color:active?c.color:"var(--muted)",boxShadow:active?`0 0 12px ${c.color}44`:"none"},
+              onClick:()=>{S.category=c.id;draw();}
+            },
+              h("div",{style:{fontSize:"20px"}},c.icon),
+              h("div",{style:{fontSize:"10px",marginTop:"4px"}},c.label)
+            );
+          })
+        )
+      ),
+      h("div",{style:{marginTop:"12px"}},h("label",{cls:"lbl"},"DESCRIBE THE PROBLEM *"),descTA),
+      h("div",{style:{marginTop:"12px"}},
+        h("label",{cls:"lbl"},"URGENCY"),
+        h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap"}},
+          ...["low","medium","high","critical"].map(u=>{
+            const active=S.urgency===u;
+            return h("button",{cls:"ubtn",
+              style:{borderColor:active?PRIORITY[u].color:"var(--border)",background:active?PRIORITY[u].bg:"var(--card2)",color:active?PRIORITY[u].color:"var(--muted)"},
+              onClick:()=>{S.urgency=u;draw();}
+            },u);
+          })
+        )
+      )
+    ),
+
+    h("button",{
+      cls:"btn-full", disabled:!valid||S.submitting,
+      onClick:async()=>{
+        if(!valid||S.submitting)return;
+        set({submitting:true});
+        const ai=await callAI(S);
+        const now=new Date();
+        const ticket={
+          id:"CPR-"+(1000+Math.floor(Math.random()*9000)),
+          role:S.role, name:S.name, contact:S.contact,
+          location:S.location, category:S.category,
+          description:S.desc, urgency:S.urgency,
+          ...ai, status:"open",
+          submittedAt:now.toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}),
+          submittedAtMs:now.getTime(),
+          updatedAt:now.toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}),
+          replies:[]
+        };
+        try{
+          const ref=await fbAdd(ticket);
+          ticket.docId=ref.id;
+          toast("✅ Complaint submitted & saved to cloud!");
+        }catch(e){
+          toast("⚠️ Saved locally. Check internet connection.","err");
+        }
+        set({submitting:false,ticket,role:"",name:"",contact:"",location:"",category:"",desc:"",urgency:""});
+      }
+    },submitLbl)
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+//  VIEW: TRACK
+// ════════════════════════════════════════════════════════════
+function pageTrack(){
+  const found=S.trackQ.trim().length>2
+    ?S.complaints.filter(c=>c.id.toLowerCase().includes(S.trackQ.toLowerCase())||(c.name||"").toLowerCase().includes(S.trackQ.toLowerCase()))
+    :[];
+  const inp=h("input",{cls:"inp",type:"text",placeholder:"Enter Ticket ID e.g. CPR-4521 or your name…",value:S.trackQ,style:{fontSize:"15px",textAlign:"center",letterSpacing:"2px",fontFamily:"'Space Mono',monospace"}});
+  inp.addEventListener("input",e=>set({trackQ:e.target.value}));
+  return h("div",{cls:"page"},
+    hdr("Track Complaint",()=>set({view:"home"})),
+    h("div",{cls:"card",style:{textAlign:"center",padding:"20px"}},
+      h("div",{style:{fontSize:"13px",color:"var(--muted)",marginBottom:"12px"}},"Enter your Ticket ID or Name"),
+      inp,
+      h("div",{cls:"live-badge",style:{marginTop:"12px",display:"inline-flex"}},
+        h("span",{cls:"live-dot"}),
+        "Searching live cloud data"
+      )
+    ),
+    S.trackQ.trim().length>2&&found.length===0?h("div",{cls:"empty"},"😕 No complaint found. Check your Ticket ID."):null,
+    ...found.map(c=>ccard(c,false,null))
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+//  VIEW: PIN GATE
+// ════════════════════════════════════════════════════════════
+function pagePinGate(){
+  function tryUnlock(){
+    if(S.pin===ADMIN_PIN)set({adminOK:true,view:"admin",pinErr:false,pin:""});
+    else set({pinErr:true,pin:""});
+  }
+  const inp=h("input",{type:"password",cls:"inp",maxlength:"4",placeholder:"••••",value:S.pin,
+    style:{textAlign:"center",fontSize:"28px",letterSpacing:"10px",width:"160px",fontFamily:"'Space Mono',monospace"}});
+  inp.addEventListener("input",e=>{S.pin=e.target.value;});
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")tryUnlock();});
+  return h("div",{cls:"page"},
+    hdr("Management Access",()=>set({view:"home"})),
+    h("div",{cls:"pinbox"},
+      h("div",{style:{fontSize:"48px",marginBottom:"14px"}},"🔐"),
+      h("div",{style:{fontSize:"18px",color:"var(--accent)",marginBottom:"8px",fontWeight:"700"}},"Admin / Management Login"),
+      h("div",{style:{fontSize:"13px",color:"var(--muted)",marginBottom:"22px"}},"Enter your 4-digit PIN"),
+      inp,
+      S.pinErr?h("div",{style:{color:"var(--red)",fontSize:"13px",marginTop:"10px"}},"❌ Wrong PIN. Try again."):null,
+      h("div",{style:{marginTop:"18px"}},h("button",{cls:"btn",onClick:tryUnlock},"Enter  →")),
+      h("div",{style:{fontSize:"11px",color:"#37474F",marginTop:"22px",fontFamily:"'Space Mono',monospace"}},"Default PIN: 1234  (change ADMIN_PIN in code)")
+    )
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+//  VIEW: ADMIN DASHBOARD
+// ════════════════════════════════════════════════════════════
+function pageAdmin(){
+  if(S.sel)return pageDetail();
+  const cs=S.complaints;
+  const filtered=cs
+    .filter(c=>S.aFilter==="all"||c.status===S.aFilter||c.priority===S.aFilter)
+    .filter(c=>!S.aSearch||c.id.includes(S.aSearch)||(c.location||"").toLowerCase().includes(S.aSearch.toLowerCase())||(c.name||"").toLowerCase().includes(S.aSearch.toLowerCase())||(c.category||"").toLowerCase().includes(S.aSearch.toLowerCase()));
+  const counts={total:cs.length,open:cs.filter(c=>c.status==="open").length,prog:cs.filter(c=>c.status==="in_progress").length,res:cs.filter(c=>c.status==="resolved").length};
+  const srch=h("input",{cls:"inp",type:"text",placeholder:"🔍 Search ID, name, location, category...",value:S.aSearch,style:{marginBottom:"12px"}});
+  srch.addEventListener("input",e=>set({aSearch:e.target.value}));
+  return h("div",{cls:"page"},
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px",flexWrap:"wrap",gap:"10px"}},
+      h("div",{},
+        h("div",{style:{fontSize:"11px",color:"var(--muted)",letterSpacing:"3px",fontFamily:"'Space Mono',monospace"}},"MANAGEMENT"),
+        h("div",{style:{fontSize:"22px",fontWeight:"800",color:"var(--accent)",fontFamily:"'Space Mono',monospace"}},"All Complaints")
+      ),
+      h("div",{style:{display:"flex",gap:"10px",alignItems:"center"}},
+        h("span",{cls:"live-badge"},h("span",{cls:"live-dot"}),"LIVE"),
+        h("button",{cls:"btn-out",style:{color:"var(--red)",borderColor:"#EF444466",fontSize:"13px",padding:"8px 16px"},
+          onClick:()=>set({adminOK:false,view:"home"})},"🚪 Logout")
+      )
+    ),
+    h("div",{cls:"g4"},
+      sbox("Total",counts.total,"#93C5FD"),
+      sbox("Open",counts.open,"#EF4444"),
+      sbox("In Prog",counts.prog,"#F59E0B"),
+      sbox("Resolved",counts.res,"#10B981")
+    ),
+    srch,
+    h("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"16px",overflowX:"auto",paddingBottom:"4px"}},
+      ...["all","open","in_progress","resolved","critical","high"].map(f=>
+        h("button",{cls:"fbtn"+(S.aFilter===f?" on":""),onClick:()=>set({aFilter:f})},f.replace("_"," "))
+      )
+    ),
+    filtered.length===0?h("div",{cls:"empty"},"No complaints found."):h("div",{},...filtered.map(c=>ccard(c,true,()=>set({sel:c,dStatus:c.status,dDept:c.assignDept||"",dReply:""}))))
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+//  VIEW: COMPLAINT DETAIL
+// ════════════════════════════════════════════════════════════
+function pageDetail(){
+  const c=S.sel;
+  const p=PRIORITY[c.priority]||PRIORITY.medium;
+  const s=STATUS[c.status]||STATUS.open;
+  const cat=CATEGORIES.find(x=>x.id===c.category);
+
+  const stSel=h("select",{cls:"inp"});
+  Object.entries(STATUS).forEach(([k,v])=>{const o=h("option",{value:k},v.icon+" "+v.label);if(S.dStatus===k)o.selected=true;stSel.appendChild(o);});
+  stSel.addEventListener("change",e=>{S.dStatus=e.target.value;});
+
+  const dpSel=h("select",{cls:"inp"},h("option",{value:""},"Select department..."));
+  DEPARTMENTS.forEach(d=>{const o=h("option",{value:d},d);if(S.dDept===d)o.selected=true;dpSel.appendChild(o);});
+  dpSel.addEventListener("change",e=>{S.dDept=e.target.value;});
+
+  const repTA=h("textarea",{cls:"inp",rows:"3",placeholder:"Type reply to student / staff...",style:{resize:"vertical",marginBottom:"10px"}},S.dReply);
+  repTA.addEventListener("input",e=>{S.dReply=e.target.value;});
+
+  return h("div",{cls:"page"},
+    hdr(c.id,()=>set({sel:null})),
+
+    h("div",{style:{background:"var(--card)",border:`1.5px solid ${p.color}55`,borderRadius:"14px",padding:"20px",marginBottom:"14px"}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"10px"}},
+        pill(p.label+" Priority",p.color,p.bg,true),
+        pill(s.icon+" "+s.label,s.color,s.color+"22",true)
+      ),
+      h("div",{style:{fontSize:"16px",color:"var(--text)",marginTop:"14px",lineHeight:"1.7"}},c.summary||c.description),
+      h("div",{style:{marginTop:"14px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}},
+        irow("Reporter",(c.role?`[${c.role}] `:"")+(c.name||"Anonymous")),
+        irow("Contact",c.contact||"—"),
+        irow("Location",c.location),
+        irow("Category",cat?cat.icon+" "+cat.label:c.category),
+        irow("Submitted",c.submittedAt),
+        irow("Updated",c.updatedAt)
+      ),
+      c.safetyNote?h("div",{style:{marginTop:"12px",padding:"12px 14px",background:"#EF444422",border:"1px solid #EF4444",borderRadius:"10px",fontSize:"13px",color:"#FFCDD2"}},"⚠️ "+c.safetyNote):null,
+      h("div",{style:{marginTop:"12px",padding:"12px 14px",background:"var(--bg)",borderRadius:"10px",fontSize:"13px",color:"var(--muted)",borderLeft:"3px solid var(--blue)"}},
+        h("strong",{style:{color:"var(--accent)"}},"Full Description:"),h("br",{}),c.description
+      )
+    ),
+
+    h("div",{cls:"acard"},
+      sec("UPDATE STATUS & ASSIGNMENT"),
+      h("div",{cls:"g2",style:{marginBottom:"14px"}},
+        h("div",{},h("label",{cls:"lbl"},"STATUS"),stSel),
+        h("div",{},h("label",{cls:"lbl"},"DEPARTMENT"),dpSel)
+      ),
+      h("button",{cls:"btn",onClick:async()=>{
+        try{
+          const now=new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"});
+          await fbUpdate(c.docId||c.id,{status:S.dStatus,assignDept:S.dDept,updatedAt:now});
+          S.sel={...c,status:S.dStatus,assignDept:S.dDept,updatedAt:now};
+          toast("✅ Updated! All phones will see this now.");
+          draw();
+        }catch(e){toast("❌ Update failed. Check internet.","err");}
+      }},"💾 Save Changes")
+    ),
+
+    h("div",{cls:"acard"},
+      sec("REPLIES TO STUDENT / STAFF"),
+      (c.replies||[]).length===0?h("div",{style:{fontSize:"13px",color:"var(--muted)",marginBottom:"12px"}},"No replies yet."):
+        h("div",{},...(c.replies||[]).map(r=>h("div",{cls:"reply-item"},
+          h("div",{style:{fontSize:"11px",color:"var(--muted)",marginBottom:"4px"}},r.by+" · "+r.at),
+          h("div",{style:{fontSize:"14px",color:"var(--text)"}},r.text)
+        ))),
+      repTA,
+      h("button",{cls:"btn",style:{background:"linear-gradient(135deg,#065F46,#047857)"},onClick:async()=>{
+        if(!S.dReply.trim())return;
+        const nr={text:S.dReply.trim(),by:"Management",at:new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})};
+        try{
+          const updatedReplies=[...(c.replies||[]),nr];
+          await fbUpdate(c.docId||c.id,{replies:updatedReplies,updatedAt:new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})});
+          S.sel={...c,replies:[...(c.replies||[]),nr]};
+          S.dReply="";
+          toast("✅ Reply sent! Student can see it now.");
+          draw();
+        }catch(e){toast("❌ Failed. Check internet.","err");}
+      }},"📤 Send Reply")
+    )
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST EL
+// ════════════════════════════════════════════════════════════
+function toastEl(){
+  if(!S.toast)return null;
+  const ok=S.toast.type==="ok";
+  return h("div",{cls:"toast",style:{background:ok?"#065F46":"#7F1D1D",border:`1px solid ${ok?"#10B981":"#EF4444"}`,color:ok?"#10B981":"#EF4444"}},(ok?"✅ ":"❌ ")+S.toast.msg);
+}
+
+// ════════════════════════════════════════════════════════════
+//  MAIN DRAW
+// ════════════════════════════════════════════════════════════
+function draw(){
+  const root=document.getElementById("root");
+  root.innerHTML="";
+  let page;
+  switch(S.view){
+    case"home":   page=pageHome();   break;
+    case"submit": page=pageSubmit(); break;
+    case"track":  page=pageTrack();  break;
+    case"pingate":page=pagePinGate();break;
+    case"admin":  page=S.adminOK?pageAdmin():pagePinGate();break;
+    default:      page=pageHome();
+  }
+  root.appendChild(page);
+  const t=toastEl();
+  if(t)root.appendChild(t);
+}
+
+// ════════════════════════════════════════════════════════════
+//  SERVICE WORKER — makes app installable
+// ════════════════════════════════════════════════════════════
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+
+// ════════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════════
+document.addEventListener("fb-ready",()=>{
+  document.getElementById("loading").style.display="none";
+  document.getElementById("root").style.display="block";
+  startListener(); // start realtime sync
+  draw();
+});
+
+// Fallback timeout
+setTimeout(()=>{
+  if(!window._sbReady){
+    document.getElementById("loading").innerHTML=`
+      <div style="font-size:40px">⚠️</div>
+      <div style="color:#F59E0B;font-size:16px;font-weight:700;margin-top:12px">Connection Error</div>
+      <div style="color:#64748B;font-size:13px;margin-top:8px;text-align:center;padding:0 30px">
+        Check your internet connection and reload the page.
+      </div>
+    `;
+  }
+},8000);
+</script>
+</body>
+</html>
