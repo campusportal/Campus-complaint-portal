@@ -8,10 +8,15 @@ The Campus Complaint Portal is a web application that allows students to submit 
 - Complaint tracking
 - Admin dashboard
 - Secure login
+- Photo upload feature
 - User-friendly interface
 
 ## Technologies Used
 - HTML
+- CSS
+- JAVA SCRIPT
+- GIT&GIT HUB (PAGES0 FOR HOSTING
+- FIREBASE
 
 ## How to Use
 1. Open the website.
