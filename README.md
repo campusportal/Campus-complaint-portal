@@ -15,14 +15,13 @@ The Campus Complaint Portal is a web application that allows students to submit 
 - HTML
 - CSS
 - JAVA SCRIPT
-- GIT&GIT HUB (PAGES0 FOR HOSTING
+- GIT & GIT HUB (PAGES FOR HOSTING)
 - FIREBASE
 
 ## How to Use
 1. Open the website.
-2. Register or log in.
-3. Submit a complaint.
-4. Track the complaint status.
+2. Submit a complaint.
+3. Track the complaint status.
 
 ## Future Enhancements
 - Email notifications
